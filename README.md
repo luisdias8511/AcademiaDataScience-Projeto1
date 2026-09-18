@@ -44,7 +44,9 @@ Fonte de Dados
 
     Relatório no terminal OU Textual 
 
-
+=============================================
+Retorno das APIs
+=============================================
 
 API Weather
             "parameters": { 
@@ -149,9 +151,9 @@ WATER:
 
 } 
 
-
+=============================================
 DER
-======
+=============================================
 
 ┌────────────────────────┐
 │     ESTACOES           
@@ -195,18 +197,42 @@ DER
 │ unidade        
 └────────────────────────┘
 
+========================================================
+Estrutura Inicial do repositório:
+========================================================
 
-
-
-
-Dia 1: Kickoff e alinhamento 
-Definir objetivo e escopo do MVP 
-Selecionar APIs 
-
- 
-
-Dia 2: 
-Criar repositório 
-Criar quadro de trabalho 
-Criar primeira versão do modelo de dados 
-
+AcademiaDataScience-Projeto1/
+├── .github/
+├── data/
+│   ├── raw/
+│   └── processed/
+├── database/
+├── docs/
+│   ├── architecture.md
+│   ├── data_dictionary.md
+├── reports/
+├── sql/
+│   ├── ANALYTICAL_QUERIES.sql
+│   └── CREATE_DATABASE.sql
+│   └── CREATE_TABLES.sql
+├── src/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── config.py
+│   ├── ingestion/
+│   │   ├── __init__.py
+│   ├── processing/
+│   │   ├── __init__.py
+│   ├── database/
+│   │   ├── __init__.py
+│   ├── analytics/
+│   │   ├── __init__.py
+│   └── reporting/
+│       ├── __init__.py
+├── tests/
+│   ├── fixtures/
+├── .env.example
+├── .gitignore
+├── pyproject.toml
+├── requirements.txt
+└── README.md
