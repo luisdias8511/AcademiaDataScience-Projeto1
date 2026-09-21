@@ -11,9 +11,14 @@ api_url = os.getenv("API_URL")
 api_key = os.getenv("API_KEY_CRIPTOGRAFADA")
 fernet_key = os.getenv("FERNET_KEY")
 
-#Descriptografia da chave de API criptografada
-f = Fernet(fernet_key)
-api_key_real = f.decrypt(api_key.encode()).decode()
+try:
+    #Tenta Descriptografia da chave de API criptografada
+    f = Fernet(fernet_key)
+    api_key_real = f.decrypt(api_key.encode()).decode()
 
-print(f"Conectando em: {api_url}")
-print(f"Usando a chave de API: {api_key_real}")
+    print(f"Conectando em: {api_url}")
+    print(f"Usando a chave de API: {api_key_real}")
+
+except Exception as erro:
+    # Caso ocorra algum erro na Descriptografia, o código exibe o erro em vez de quebrar
+    print(f"Erro ao descriptografar a chave de API: {erro}")
