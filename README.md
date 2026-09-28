@@ -203,6 +203,51 @@ DER
 └────────────────────────┘
 
 ========================================================
+SQL Server
+========================================================
+
+Este projeto utiliza SQL Server Express com Windows Authentication.
+
+**Pré-requisitos:**
+- SQL Server Express 2019 ou superior
+- ODBC Driver 18 for SQL Server
+- Windows Authentication habilitado
+
+**Configuração de Conexão:**
+
+O projeto usa `Trusted_Connection=yes` para autenticação Windows.
+Não é necessário informar usuário ou senha SQL Server.
+
+```python
+connection_string = (
+    "DRIVER={ODBC Driver 18 for SQL Server};"
+    "SERVER=localhost\\SQLEXPRESS;"
+    "DATABASE=EnvironmentalMonitoring;"
+    "Trusted_Connection=yes;"
+    "TrustServerCertificate=yes;"
+)
+```
+
+**Variáveis de Ambiente:**
+
+Crie arquivo `.env` na raiz do projeto:
+
+```
+SQL_SERVER=localhost\SQLEXPRESS
+SQL_DATABASE=EnvironmentalMonitoring
+```
+
+**Inicializar Banco de Dados:**
+
+Execute os scripts na ordem:
+
+```bash
+sqlcmd -S localhost\SQLEXPRESS -E -i sql/CREATE_DATABASE.sql
+sqlcmd -S localhost\SQLEXPRESS -E -i sql/CREATE_TABLES.sql
+sqlcmd -S localhost\SQLEXPRESS -E -i sql/POPULATE_DATABASE.sql
+```
+
+========================================================
 Estrutura Inicial do repositório:
 ========================================================
 

@@ -5,7 +5,6 @@ import math
 from collections.abc import Sequence
 from datetime import datetime
 
-from src.exceptions import ValidationError
 from src.models.reading import Reading
 from src.models.reading_value import ReadingValue
 from src.constants import WEATHER_PARAMETERS
@@ -24,36 +23,36 @@ class ReadingProcessor:
     """
 
     def validate(self, reading: Reading) -> None:
-        """Valida uma leitura. Retorna None se válida, lança ValidationError se inválida."""
+        """Valida uma leitura. Retorna None se válida, lança ValueError se inválida."""
         if reading.station_id <= 0:
-            raise ValidationError("O identificador da estação deve ser maior que zero.")
+            raise ValueError("O identificador da estação deve ser maior que zero.")
 
         if not isinstance(reading.timestamp, datetime):
-            raise ValidationError("O timestamp deve ser um objeto datetime.")
+            raise ValueError("O timestamp deve ser um objeto datetime.")
 
         if reading.timestamp.tzinfo is None:
-            raise ValidationError("O timestamp deve ser timezone-aware.")
+            raise ValueError("O timestamp deve ser timezone-aware.")
 
         if not reading.values:
-            raise ValidationError("Uma leitura deve conter pelo menos um valor.")
+            raise ValueError("Uma leitura deve conter pelo menos um valor.")
 
         for reading_value in reading.values:
             if not reading_value.parameter_code:
-                raise ValidationError("O código do parâmetro não pode estar vazio.")
+                raise ValueError("O código do parâmetro não pode estar vazio.")
 
             if reading_value.parameter_code not in WEATHER_PARAMETERS.values():
-                raise ValidationError(
+                raise ValueError(
                     f"Parâmetro não suportado: {reading_value.parameter_code}."
                 )
 
             try:
                 value_float = float(reading_value.value)
                 if not math.isfinite(value_float):
-                    raise ValidationError(
+                    raise ValueError(
                         f"Valor não finito para parâmetro {reading_value.parameter_code}: {value_float}."
                     )
             except (ValueError, TypeError) as e:
-                raise ValidationError(
+                raise ValueError(
                     f"Valor não numérico para parâmetro {reading_value.parameter_code}: {e}."
                 )
 
