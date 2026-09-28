@@ -1,0 +1,314 @@
+"""Repositório unificado de leituras ambientais."""
+
+import logging
+from collections.abc import Sequence
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from src.models.reading import Reading
+from src.models.station import Station
+from src.exceptions import DatabaseError
+
+logger = logging.getLogger(__name__)
+
+
+class ReadingRepository:
+    """Persistência e recuperação de leituras do SQL Server."""
+
+    def __init__(self, connection_string: str) -> None:
+        """Inicializa repositório com string de conexão."""
+        self.connection_string = connection_string
+        self.conn = None
+
+    def _connect(self):
+        """Estabelece conexão com banco de dados."""
+        try:
+            import pyodbc
+            self.conn = pyodbc.connect(self.connection_string)
+        except Exception as e:
+            raise DatabaseError(f"Falha ao conectar ao banco: {e}")
+
+    def _disconnect(self):
+        """Encerra conexão com banco de dados."""
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
+    def get_station_by_id(self, station_id: int) -> Station | None:
+        """Busca estação pelo ID."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Id, Code, Name, Latitude, Longitude FROM Stations WHERE Id = ?",
+                station_id,
+            )
+            row = cursor.fetchone()
+            self._disconnect()
+
+            if row:
+                return Station(
+                    id=row[0],
+                    code=row[1],
+                    name=row[2],
+                    latitude=Decimal(str(row[3])),
+                    longitude=Decimal(str(row[4])),
+                )
+            return None
+        except Exception as e:
+            raise DatabaseError(f"Erro ao buscar estação: {e}")
+
+    def _get_parameter_id_by_code(self, cursor, parameter_code: str) -> int | None:
+        """Busca ID do parâmetro pelo código usando cursor existente."""
+        try:
+            cursor.execute(
+                "SELECT Id FROM Parameters WHERE Code = ?",
+                parameter_code,
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+        except Exception as e:
+            raise DatabaseError(f"Erro ao buscar parâmetro: {e}")
+
+    def get_parameter_id_by_code(self, parameter_code: str) -> int | None:
+        """Busca ID do parâmetro pelo código (para uso externo)."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            param_id = self._get_parameter_id_by_code(cursor, parameter_code)
+            self._disconnect()
+            return param_id
+        except Exception as e:
+            raise DatabaseError(f"Erro ao buscar parâmetro: {e}")
+
+    def save(self, reading: Reading) -> int:
+        """Persiste uma leitura no banco com transação."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+
+            # Converte timestamp para UTC sem timezone e sem microssegundos
+            database_timestamp = (
+                reading.timestamp
+                .astimezone(timezone.utc)
+                .replace(tzinfo=None, microsecond=0)
+            )
+
+            logger.info(
+                "Persistindo leitura da estação %s.",
+                reading.station_id,
+            )
+
+            # Insere na tabela Readings com OUTPUT para obter o ID
+            cursor.execute(
+                """
+                INSERT INTO Readings (StationId, DateTime)
+                OUTPUT INSERTED.Id
+                VALUES (?, ?)
+                """,
+                reading.station_id,
+                database_timestamp,
+            )
+            reading_id = cursor.fetchone()[0]
+            logger.debug(
+                "Leitura %s criada.",
+                reading_id,
+            )
+
+            # Insere valores na tabela ReadingValues
+            for value in reading.values:
+                param_id = self._get_parameter_id_by_code(cursor, value.parameter_code)
+                if not param_id:
+                    self.conn.rollback()
+                    self._disconnect()
+                    raise DatabaseError(
+                        f"Parâmetro não encontrado: {value.parameter_code}"
+                    )
+
+                cursor.execute(
+                    """
+                    INSERT INTO ReadingValues (ReadingId, ParameterId, Value)
+                    VALUES (?, ?, ?)
+                    """,
+                    reading_id,
+                    param_id,
+                    float(value.value),
+                )
+                logger.debug(
+                    "Valor do parâmetro %s persistido.",
+                    value.parameter_code,
+                )
+
+            # Commit da transação
+            self.conn.commit()
+            logger.info(
+                "Leitura %s persistida com sucesso.",
+                reading_id,
+            )
+            self._disconnect()
+            return reading_id
+
+        except DatabaseError:
+            raise
+        except Exception as e:
+            if self.conn:
+                try:
+                    self.conn.rollback()
+                    logger.warning("Transação revertida devido a erro.")
+                except Exception:
+                    pass
+            self._disconnect()
+            raise DatabaseError(f"Erro ao persistir leitura: {e}")
+
+    def save_many(self, readings: Sequence[Reading]) -> list[int]:
+        """Persiste múltiplas leituras no banco."""
+        reading_ids: list[int] = []
+        for reading in readings:
+            reading_id = self.save(reading)
+            reading_ids.append(reading_id)
+        return reading_ids
+
+    def get_parameter_values(
+        self,
+        parameter_code: str,
+        start_date: datetime,
+        end_date: datetime,
+        station_id: int | None = None,
+    ) -> list[float]:
+        """Busca valores de um parâmetro em um período."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+
+            param_id = self._get_parameter_id_by_code(cursor, parameter_code)
+            if not param_id:
+                self._disconnect()
+                return []
+
+            logger.debug(
+                "Buscando valores do parâmetro %s de %s até %s.",
+                parameter_code,
+                start_date,
+                end_date,
+            )
+
+            if station_id:
+                cursor.execute(
+                    """
+                    SELECT rv.Value
+                    FROM ReadingValues rv
+                    INNER JOIN Readings r ON rv.ReadingId = r.Id
+                    INNER JOIN Parameters p ON rv.ParameterId = p.Id
+                    WHERE p.Code = ?
+                      AND r.DateTime BETWEEN ? AND ?
+                      AND r.StationId = ?
+                    """,
+                    parameter_code,
+                    start_date,
+                    end_date,
+                    station_id,
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT rv.Value
+                    FROM ReadingValues rv
+                    INNER JOIN Readings r ON rv.ReadingId = r.Id
+                    INNER JOIN Parameters p ON rv.ParameterId = p.Id
+                    WHERE p.Code = ?
+                      AND r.DateTime BETWEEN ? AND ?
+                    """,
+                    parameter_code,
+                    start_date,
+                    end_date,
+                )
+
+            rows = cursor.fetchall()
+            self._disconnect()
+            return [float(row[0]) for row in rows]
+        except Exception as e:
+            self._disconnect()
+            raise DatabaseError(f"Erro ao buscar valores de parâmetro: {e}")
+
+    def get_by_station(
+        self,
+        station_id: int,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[Reading]:
+        """Busca leituras de uma estação em um período."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+
+            logger.debug(
+                "Buscando leituras da estação %s de %s até %s.",
+                station_id,
+                start_date,
+                end_date,
+            )
+
+            cursor.execute(
+                """
+                SELECT r.Id, r.StationId, r.DateTime
+                FROM Readings r
+                WHERE r.StationId = ?
+                  AND r.DateTime BETWEEN ? AND ?
+                ORDER BY r.DateTime
+                """,
+                station_id,
+                start_date,
+                end_date,
+            )
+
+            rows = cursor.fetchall()
+            readings: list[Reading] = []
+
+            for row in rows:
+                reading_id = row[0]
+                # Busca valores da leitura com unidade do Parameters
+                cursor.execute(
+                    """
+                    SELECT p.Code, rv.Value, p.Unit
+                    FROM ReadingValues rv
+                    INNER JOIN Parameters p ON rv.ParameterId = p.Id
+                    WHERE rv.ReadingId = ?
+                    """,
+                    reading_id,
+                )
+
+                from src.models.reading_value import ReadingValue
+                values = [
+                    ReadingValue(
+                        parameter_code=v[0],
+                        value=Decimal(str(v[1])),
+                        unit=v[2],
+                    )
+                    for v in cursor.fetchall()
+                ]
+
+                if values:
+                    # Restaura timezone UTC ao ler do banco
+                    reading_datetime = row[2].replace(tzinfo=timezone.utc)
+                    reading = Reading(
+                        station_id=row[1],
+                        timestamp=reading_datetime,
+                        values=tuple(values),
+                    )
+                    readings.append(reading)
+                    logger.debug(
+                        "Leitura %s recuperada com %d valor(es).",
+                        reading_id,
+                        len(values),
+                    )
+
+            logger.info(
+                "%d leitura(s) recuperada(s) para a estação %s.",
+                len(readings),
+                station_id,
+            )
+            self._disconnect()
+            return readings
+        except Exception as e:
+            self._disconnect()
+            raise DatabaseError(f"Erro ao buscar leituras: {e}")

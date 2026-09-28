@@ -1,0 +1,1 @@
+"""Módulo de serviços de negócio do pipeline ambiental."""

@@ -27,13 +27,18 @@ Fonte de Dados
     Anominazação; 
     
     Persistência Banco SQL Server 
-    pelo menos duas tabelas:  
-        estacoes (metadados das estações) 
-        ID Código Nome Latitude Longitude  
+    com quatro tabelas:  
+        Stations (metadados das estações) 
+        ID Code Name Latitude Longitude  
 
-    leituras (dados temporais) 
-        data_hora_medicao 
-        Temperatura 
+        Readings (dados temporais) 
+        DateTime StationId  
+
+        Parameters (parâmetros de monitoramento)
+        ID Code Name Unit
+
+        ReadingValues (valores de leitura)
+        ID ReadingId ParameterId Value 
  
     Consulta SQL 
 
@@ -156,45 +161,45 @@ DER
 =============================================
 
 ┌────────────────────────┐
-│     ESTACOES           
+│      STATIONS          
 ├────────────────────────┤
-│ id (PK)                
-│ codigo                 
-│ nome                   
-│ latitude               
-│ longitude              
+│ Id (PK)                
+│ Code                   
+│ Name                   
+│ Latitude               
+│ Longitude              
 └────────────┬───────────┘
              │
              │ 1:N
              │
 ┌────────────▼───────────┐
-│      LEITURAS          
+│      READINGS          
 ├────────────────────────┤
-│ id (PK)                
-│ estacao_id (FK)        
-│ data_hora              
+│ Id (PK)                
+│ StationId (FK)         
+│ DateTime               
 └────────────┬───────────┘
              │
              │ 1:N
              │
 ┌────────────▼───────────┐
-│   VALORES_LEITURA      
+│   READINGVALUES        
 ├────────────────────────┤
-│ id (PK)                			
-│ leitura_id (FK)        
-│ parametro_id (FK)      
-│ valor                  
+│ Id (PK)                
+│ ReadingId (FK)         
+│ ParameterId (FK)       
+│ Value                  
 └────────────┬───────────
              │
              │ N:1
              │
 ┌────────────▼───────────┐
-│      PARAMETROS        
+│      PARAMETERS        
 ├────────────────────────┤
-│ id (PK)                
-│ codigo                 
-│ nome                  
-│ unidade        
+│ Id (PK)                
+│ Code                   
+│ Name                   
+│ Unit                   
 └────────────────────────┘
 
 ========================================================
