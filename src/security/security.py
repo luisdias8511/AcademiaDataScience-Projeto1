@@ -1,12 +1,14 @@
 # Para que o Python consiga ler as Variáveis de Ambiente do .env, abra o terminal e instale o pacote python-dotenv: python.exe -m pip install python-dotenv
 import os
 import logging
+from src.config import logger
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+from src.security.log_utils import tratar_erro # ajuste o import conforme sua estrutura
 
 # Configuração de logs - em substuição dos prints() comuns, recursos mais avançados
-logging.basicConfig(level = logging.INFO, format = '%(asctime)s - [%(levelname)s] - %(message)s')
-logger = logging.getLogger('TempH2OLogger')
+# logging.basicConfig(level = logging.INFO, format = '%(asctime)s - [%(levelname)s] - %(message)s')
+# logger = logging.getLogger('TempH2OLogger')
 
 
 # Carrega as variáveis do arquivo .env
@@ -19,6 +21,7 @@ api_key = os.getenv("API_KEY_CRIPTOGRAFADA")
 fernet_key = os.getenv("FERNET_KEY")
 
 try:
+
     #Tenta Descriptografia da chave de API criptografada
     f = Fernet(fernet_key)
     api_key_real = f.decrypt(api_key.encode()).decode()
@@ -32,6 +35,9 @@ try:
 
 except Exception as erro:
     # Caso ocorra algum erro na Descriptografia, o código exibe o erro em vez de quebrar
-    #print(f"Erro ao descriptografar a chave de API: {erro}")
+    # print(f"Erro ao descriptografar a chave de API: {erro}")
     # Configuração de logs - em substuição dos prints() comuns, recursos mais avançados
-    logger.error(f"Erro ao descriptografar a chave de API: {erro}", exc_info=True) # E agora exibe também o rastreamento completo do erro nos logs
+    # logger.error(f"Erro ao descriptografar a chave de API: {erro}", exc_info=True) # E agora exibe também
+    logger.error(f"Erro durante a Descriptografia da chave de API: {erro}", exc_info=True)
+    logger.info("Finalizado tratamento de erro para Descriptografia da chave de API")
+
