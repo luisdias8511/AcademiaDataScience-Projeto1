@@ -16,9 +16,8 @@ class ReadingValue:
     independente de identificadores de banco de dados.
     
     Atributos:
-        parameter_code: Código do parâmetro em letras maiúsculas (ex: TEMPERATURE).
+        parameter_code: Código do parâmetro.
         value: Valor numérico da medição convertido para Decimal.
-        unit: Unidade de medida (ex: °C) ou None se não aplicável.
     """
 
     parameter_code: str
@@ -30,8 +29,4 @@ class ReadingValue:
         if not self.parameter_code or not self.parameter_code.strip():
             raise ValueError(
                 "O código do parâmetro não pode estar vazio."
-            )
-        if self.parameter_code != self.parameter_code.upper():
-            raise ValueError(
-                "O código do parâmetro deve utilizar apenas letras maiúsculas."
             )
