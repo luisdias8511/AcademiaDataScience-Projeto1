@@ -90,30 +90,30 @@ def main():
         # Todos os parâmetros devem estar cadastrados em Parameters table
         reading_values = (
             ReadingValue(
-                parameter_code="TEMPERATURE",
+                parameter_code="temperature",
                 value=Decimal("21.06"),
-                unit="°C",
+                unit=None,
             ),
             ReadingValue(
-                parameter_code="HUMIDITY",
+                parameter_code="humidity",
                 value=Decimal("65.50"),
-                unit="%",
+                unit=None,
             ),
             ReadingValue(
-                parameter_code="PRESSURE",
+                parameter_code="pressure",
                 value=Decimal("1013.25"),
-                unit="hPa",
+                unit=None,
             ),
             ReadingValue(
-                parameter_code="WIND_SPEED",
+                parameter_code="wind_speed",
                 value=Decimal("12.40"),
-                unit="km/h",
+                unit=None,
             ),
         )
 
         print(f"✓ {len(reading_values)} ReadingValue(s) criados:")
         for rv in reading_values:
-            print(f"  - {rv.parameter_code}: {rv.value} {rv.unit}")
+            print(f"  - {rv.parameter_code}: {rv.value}")
 
         # ====================================================================
         # ETAPA 4: CRIAR READING
@@ -171,7 +171,7 @@ def main():
 
             for value in last_reading.values:
                 print(
-                    f"    • {value.parameter_code:25} = {value.value:10} {value.unit}"
+                    f"    • {value.parameter_code:25} = {value.value:10}"
                 )
 
             print("\n✅ Validação concluída com sucesso!")

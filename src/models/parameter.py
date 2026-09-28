@@ -12,7 +12,7 @@ class Parameter:
     
     Atributos:
         id: Identificador único no banco de dados (None até persistência).
-        code: Código único do parâmetro em letras maiúsculas (ex: TEMPERATURE).
+        code: Código único do parâmetro.
         name: Nome descritivo do parâmetro (ex: Temperature).
         unit: Unidade de medida (ex: °C) ou None se não aplicável.
     """
@@ -27,10 +27,6 @@ class Parameter:
         if not self.code or not self.code.strip():
             raise ValueError(
                 "O código do parâmetro não pode estar vazio."
-            )
-        if self.code != self.code.upper():
-            raise ValueError(
-                "O código do parâmetro deve utilizar apenas letras maiúsculas."
             )
         if not self.name or not self.name.strip():
             raise ValueError(

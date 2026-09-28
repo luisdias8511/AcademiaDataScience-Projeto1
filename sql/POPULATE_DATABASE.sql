@@ -10,33 +10,30 @@ INSERT INTO dbo.Parameters
     Unit
 )
 VALUES
-('APPARENT_TEMPERATURE',
+('apparent_temperature',
  'Apparent Temperature',
  '°C'),
-('CLOUD_COVER',
+('cloud_cover',
  'Cloud Cover',
  '%'),
-('HUMIDITY',
+('humidity',
  'Humidity',
  '%'),
-('PRECIPITATIONS',
+('precipitations',
  'Precipitations',
  'mm'),
-('PRESSURE',
+('pressure',
  'Pressure',
  'hPa'),
-('TEMPERATURE',
+('temperature',
  'Temperature',
  '°C'),
-('WIND_DIRECTION',
+('wind_direction',
  'Wind Direction',
  '°'),
-('WIND_SPEED',
+('wind_speed',
  'Wind Speed',
- 'km/h'),
-('PH',
- 'pH',
- NULL);
+ 'km/h');
 GO
  
  

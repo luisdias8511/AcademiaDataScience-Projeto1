@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from src.models.reading import Reading
 from src.models.station import Station
+from src.models.parameter import Parameter
 
 logger = logging.getLogger(__name__)
 
@@ -351,3 +352,91 @@ class ReadingRepository:
         except Exception as e:
             self._disconnect()
             raise Exception(f"Erro ao buscar leituras: {e}")
+
+    def get_stations(self) -> list[Station]:
+        """Busca todas as estações cadastradas."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Id, Code, Name, Latitude, Longitude FROM Stations ORDER BY Code"
+            )
+            rows = cursor.fetchall()
+            self._disconnect()
+
+            stations = [
+                Station(
+                    id=row[0],
+                    code=row[1],
+                    name=row[2],
+                    latitude=Decimal(str(row[3])),
+                    longitude=Decimal(str(row[4])),
+                )
+                for row in rows
+            ]
+            return stations
+        except Exception as e:
+            raise Exception(f"Erro ao buscar estações: {e}")
+
+    def get_parameter_by_code(self, parameter_code: str) -> Parameter | None:
+        """Busca parâmetro pelo código e retorna objeto Parameter."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Id, Code, Name, Unit FROM Parameters WHERE Code = ?",
+                parameter_code,
+            )
+            row = cursor.fetchone()
+            self._disconnect()
+
+            if row:
+                return Parameter(
+                    id=row[0],
+                    code=row[1],
+                    name=row[2],
+                    unit=row[3],
+                )
+            return None
+        except Exception as e:
+            raise Exception(f"Erro ao buscar parâmetro: {e}")
+
+    def get_weather_parameters(self) -> list[Parameter]:
+        """Busca todos os parâmetros meteorológicos cadastrados."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Id, Code, Name, Unit FROM Parameters ORDER BY Code"
+            )
+            rows = cursor.fetchall()
+            self._disconnect()
+
+            parameters = [
+                Parameter(
+                    id=row[0],
+                    code=row[1],
+                    name=row[2],
+                    unit=row[3],
+                )
+                for row in rows
+            ]
+            return parameters
+        except Exception as e:
+            raise Exception(f"Erro ao buscar parâmetros: {e}")
+
+    def get_weather_parameters_codes(self) -> list[str]:
+        """Busca os códigos de todos os parâmetros meteorológicos cadastrados."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Code FROM Parameters ORDER BY Code"
+            )
+            rows = cursor.fetchall()
+            self._disconnect()
+
+            codes = [row[0] for row in rows]
+            return codes
+        except Exception as e:
+            raise Exception(f"Erro ao buscar códigos de parâmetros: {e}")
