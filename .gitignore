@@ -1,3 +1,16 @@
+# Ignore criptografia da environment
+.env.cryptography
+
+# Ignore logs
+/logs
+*.log
+
+# Ignore virtual environment directories
+venv/
+
+# Ignore test files
+src/Sass
+
 .env.cryptography
 # Ignore Python cache directories
 __pycache__/
@@ -6,4 +19,5 @@ __pycache__/
 *.py[cod]
 
 # (Optional) Jython bytecode
+*$py.class
 *$py.class
