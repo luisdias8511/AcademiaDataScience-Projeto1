@@ -306,10 +306,10 @@ class ReadingRepository:
 
             for row in rows:
                 reading_id = row[0]
-                # Busca valores da leitura com unidade do Parameters
+                # Busca valores da leitura
                 cursor.execute(
                     """
-                    SELECT p.Code, rv.Value, p.Unit
+                    SELECT p.Code, rv.Value
                     FROM ReadingValues rv
                     INNER JOIN Parameters p ON rv.ParameterId = p.Id
                     WHERE rv.ReadingId = ?
@@ -322,7 +322,6 @@ class ReadingRepository:
                     ReadingValue(
                         parameter_code=v[0],
                         value=Decimal(str(v[1])),
-                        unit=v[2],
                     )
                     for v in cursor.fetchall()
                 ]
