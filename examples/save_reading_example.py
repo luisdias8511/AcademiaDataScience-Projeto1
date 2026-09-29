@@ -92,22 +92,18 @@ def main():
             ReadingValue(
                 parameter_code="temperature",
                 value=Decimal("21.06"),
-                unit=None,
             ),
             ReadingValue(
                 parameter_code="humidity",
                 value=Decimal("65.50"),
-                unit=None,
             ),
             ReadingValue(
                 parameter_code="pressure",
                 value=Decimal("1013.25"),
-                unit=None,
             ),
             ReadingValue(
                 parameter_code="wind_speed",
                 value=Decimal("12.40"),
-                unit=None,
             ),
         )
 

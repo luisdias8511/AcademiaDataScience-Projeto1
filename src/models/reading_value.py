@@ -15,6 +15,8 @@ class ReadingValue:
     de persistência. Durante ingestão e processamento, este objeto é
     independente de identificadores de banco de dados.
     
+    A unidade de medida é obtida pela classe Parameter, não por ReadingValue.
+    
     Atributos:
         parameter_code: Código do parâmetro.
         value: Valor numérico da medição convertido para Decimal.
@@ -22,7 +24,6 @@ class ReadingValue:
 
     parameter_code: str
     value: Decimal
-    unit: str | None
 
     def __post_init__(self) -> None:
         """Valida os invariantes do valor de leitura após inicialização."""

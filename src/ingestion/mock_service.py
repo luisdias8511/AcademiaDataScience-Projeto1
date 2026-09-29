@@ -42,22 +42,18 @@ class MockIngestionService:
                 ReadingValue(
                     parameter_code="temperature",
                     value=Decimal("21.06"),
-                    unit="°C",
                 ),
                 ReadingValue(
                     parameter_code="humidity",
                     value=Decimal("65.50"),
-                    unit="%",
                 ),
                 ReadingValue(
                     parameter_code="pressure",
                     value=Decimal("1013.25"),
-                    unit="hPa",
                 ),
                 ReadingValue(
                     parameter_code="wind_speed",
                     value=Decimal("12.40"),
-                    unit="m/s",
                 ),
             ),
         )
@@ -69,22 +65,18 @@ class MockIngestionService:
                 ReadingValue(
                     parameter_code="temperature",
                     value=Decimal("22.15"),
-                    unit="°C",
                 ),
                 ReadingValue(
                     parameter_code="humidity",
                     value=Decimal("63.20"),
-                    unit="%",
                 ),
                 ReadingValue(
                     parameter_code="pressure",
                     value=Decimal("1012.80"),
-                    unit="hPa",
                 ),
                 ReadingValue(
                     parameter_code="wind_speed",
                     value=Decimal("11.90"),
-                    unit="m/s",
                 ),
             ),
         )
