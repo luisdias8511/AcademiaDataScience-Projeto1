@@ -11,7 +11,7 @@ class StatisticsResult:
     calculadas sobre os valores de um parâmetro específico em um período.
     
     Atributos:
-        parameter_code: Código do parâmetro analisado em letras maiúsculas.
+        parameter_code: Código do parâmetro
         count: Quantidade de observações utilizadas no cálculo.
         average: Valor médio (mean) das observações.
         median: Valor da mediana (50º percentil).
@@ -41,10 +41,6 @@ class StatisticsResult:
         if not self.parameter_code or not self.parameter_code.strip():
             raise ValueError(
                 "O código do parâmetro não pode estar vazio."
-            )
-        if self.parameter_code != self.parameter_code.upper():
-            raise ValueError(
-                "O código do parâmetro deve utilizar apenas letras maiúsculas."
             )
         if self.count <= 0:
             raise ValueError(
