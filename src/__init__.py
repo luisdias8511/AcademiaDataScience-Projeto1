@@ -9,7 +9,6 @@ from src import (
     analytics,
     reporting,
     security,
-    exceptions,
 )
 
 __all__ = [
@@ -21,5 +20,4 @@ __all__ = [
     "analytics",
     "reporting",
     "security",
-    "exceptions",
 ]

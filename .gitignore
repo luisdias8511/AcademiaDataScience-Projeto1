@@ -1,5 +1,5 @@
 # Ignore arquivo .env
-.env
+#.env
 
 # Ignore criptografia da environment
 .env.cryptography
