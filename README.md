@@ -27,13 +27,18 @@ Fonte de Dados
     Anominazação; 
     
     Persistência Banco SQL Server 
-    pelo menos duas tabelas:  
-        estacoes (metadados das estações) 
-        ID Código Nome Latitude Longitude  
+    com quatro tabelas:  
+        Stations (metadados das estações) 
+        ID Code Name Latitude Longitude  
 
-    leituras (dados temporais) 
-        data_hora_medicao 
-        Temperatura 
+        Readings (dados temporais) 
+        DateTime StationId  
+
+        Parameters (parâmetros de monitoramento)
+        ID Code Name Unit
+
+        ReadingValues (valores de leitura)
+        ID ReadingId ParameterId Value 
  
     Consulta SQL 
 
@@ -156,46 +161,91 @@ DER
 =============================================
 
 ┌────────────────────────┐
-│     ESTACOES           
+│      STATIONS          
 ├────────────────────────┤
-│ id (PK)                
-│ codigo                 
-│ nome                   
-│ latitude               
-│ longitude              
+│ Id (PK)                
+│ Code                   
+│ Name                   
+│ Latitude               
+│ Longitude              
 └────────────┬───────────┘
              │
              │ 1:N
              │
 ┌────────────▼───────────┐
-│      LEITURAS          
+│      READINGS          
 ├────────────────────────┤
-│ id (PK)                
-│ estacao_id (FK)        
-│ data_hora              
+│ Id (PK)                
+│ StationId (FK)         
+│ DateTime               
 └────────────┬───────────┘
              │
              │ 1:N
              │
 ┌────────────▼───────────┐
-│   VALORES_LEITURA      
+│   READINGVALUES        
 ├────────────────────────┤
-│ id (PK)                			
-│ leitura_id (FK)        
-│ parametro_id (FK)      
-│ valor                  
+│ Id (PK)                
+│ ReadingId (FK)         
+│ ParameterId (FK)       
+│ Value                  
 └────────────┬───────────
              │
              │ N:1
              │
 ┌────────────▼───────────┐
-│      PARAMETROS        
+│      PARAMETERS        
 ├────────────────────────┤
-│ id (PK)                
-│ codigo                 
-│ nome                  
-│ unidade        
+│ Id (PK)                
+│ Code                   
+│ Name                   
+│ Unit                   
 └────────────────────────┘
+
+========================================================
+SQL Server
+========================================================
+
+Este projeto utiliza SQL Server Express com Windows Authentication.
+
+**Pré-requisitos:**
+- SQL Server Express 2019 ou superior
+- ODBC Driver 18 for SQL Server
+- Windows Authentication habilitado
+
+**Configuração de Conexão:**
+
+O projeto usa `Trusted_Connection=yes` para autenticação Windows.
+Não é necessário informar usuário ou senha SQL Server.
+
+```python
+connection_string = (
+    "DRIVER={ODBC Driver 18 for SQL Server};"
+    "SERVER=localhost\\SQLEXPRESS;"
+    "DATABASE=EnvironmentalMonitoring;"
+    "Trusted_Connection=yes;"
+    "TrustServerCertificate=yes;"
+)
+```
+
+**Variáveis de Ambiente:**
+
+Crie arquivo `.env` na raiz do projeto:
+
+```
+SQL_SERVER=localhost\SQLEXPRESS
+SQL_DATABASE=EnvironmentalMonitoring
+```
+
+**Inicializar Banco de Dados:**
+
+Execute os scripts na ordem:
+
+```bash
+sqlcmd -S localhost\SQLEXPRESS -E -i sql/CREATE_DATABASE.sql
+sqlcmd -S localhost\SQLEXPRESS -E -i sql/CREATE_TABLES.sql
+sqlcmd -S localhost\SQLEXPRESS -E -i sql/POPULATE_DATABASE.sql
+```
 
 ========================================================
 Estrutura Inicial do repositório:
