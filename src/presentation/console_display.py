@@ -138,24 +138,82 @@ def read_date_range() -> tuple[datetime, datetime]:
 
 
 def show_statistics_table(results: list[StatisticsResult]) -> None:
-    """Exibe resultados estatísticos em formato tabular.
-    
-    Args:
-        results: Lista com resultados estatísticos
-    """
-    print("\n" + "=" * 80)
+    """Exibe estatísticas, quartis, limites e outliers por parâmetro."""
+    if not results:
+        print("\nNenhum resultado estatístico disponível.")
+        return
+ 
+    parameter_width = max(
+        20,
+        len("PARÂMETRO"),
+        max(len(result.parameter_code) for result in results),
+    )
+ 
+    # Tabela 1: quantidade e medidas estatísticas
+    header = (
+        f"{'PARÂMETRO':<{parameter_width}} "
+        f"{'QTDE':>6} "
+        f"{'MÉDIA':>10} "
+        f"{'MEDIANA':>10} "
+        f"{'DESVIO POP.':>12} "
+        f"{'Q1':>10} "
+        f"{'Q3':>10} "
+        f"{'IQR':>10}"
+    )
+ 
+    print("\n" + "=" * len(header))
     print("ANÁLISE ESTATÍSTICA")
-    print("=" * 80)
-    print(f"{'PARÂMETRO':<15} {'QTDE':<8} {'MÉDIA':<12} {'MEDIANA':<12} {'DESVIO':<12}")
-    print("-" * 80)
-    
+    print("=" * len(header))
+    print(header)
+    print("-" * len(header))
+ 
     for result in results:
         print(
-            f"{result.parameter_code:<15} "
-            f"{result.count:<8} "
-            f"{result.average:<12.2f} "
-            f"{result.median:<12.2f} "
-            f"{result.standard_deviation:<12.2f}"
+            f"{result.parameter_code:<{parameter_width}} "
+            f"{result.count:>6} "
+            f"{result.average:>10.2f} "
+            f"{result.median:>10.2f} "
+            f"{result.standard_deviation:>12.2f} "
+            f"{result.q1:>10.2f} "
+            f"{result.q3:>10.2f} "
+            f"{result.iqr:>10.2f}"
         )
-    
-    print("=" * 80)
+ 
+    print("=" * len(header))
+ 
+    # Tabela 2: limites e quantidade de outliers
+    limits_header = (
+        f"{'PARÂMETRO':<{parameter_width}} "
+        f"{'LIMITE INFERIOR':>16} "
+        f"{'LIMITE SUPERIOR':>16} "
+        f"{'QTDE OUTLIERS':>14}"
+    )
+ 
+    print("\n" + "=" * len(limits_header))
+    print("LIMITES E OUTLIERS — REGRA DE 1,5 × IQR")
+    print("=" * len(limits_header))
+    print(limits_header)
+    print("-" * len(limits_header))
+ 
+    for result in results:
+        print(
+            f"{result.parameter_code:<{parameter_width}} "
+            f"{result.lower_bound:>16.2f} "
+            f"{result.upper_bound:>16.2f} "
+            f"{len(result.outliers):>14}"
+        )
+ 
+    print("=" * len(limits_header))
+ 
+    # Valores apresentados separadamente para não alargar a tabela
+    print("\nVALORES IDENTIFICADOS COMO OUTLIERS")
+ 
+    for result in results:
+        if result.outliers:
+            values = ", ".join(
+                f"{value:.2f}" for value in result.outliers
+            )
+        else:
+            values = "Nenhum"
+ 
+        print(f"{result.parameter_code}: {values}")
