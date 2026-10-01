@@ -1,12 +1,24 @@
 import json
+import os
 
 import pandas as pd
 # Importa a biblioteca responsável por realizar requisições HTTP.
 import requests  # type: ignore[import-unresolved]
 
+from dotenv import load_dotenv
+
 from src.database.reading_repository import ReadingRepository
 from src.security import security
+from src.security.log_utils import tratar_erro
 from src.config import logger
+
+# Carrega variáveis de ambiente
+load_dotenv()
+
+# Carrega URL da API do .env
+API_URL_WEATHER = os.getenv(
+    "API_URL_TEMP"
+)
 
 
 # Define a função que recupera a chave da API já processada pelo módulo de segurança.
@@ -29,7 +41,7 @@ def _fetch_weather_history(
 ) -> dict:
     """Realiza a requisição HTTP para a API de histórico meteorológico."""
     response = requests.get(
-        "https://api.meersens.com/environment/public/weather/history",
+        API_URL_WEATHER,
         headers={"apikey": get_api_key()},
         params={
             "lat": lat,
@@ -143,9 +155,8 @@ def consulta_api(
         print(parametros.head())
 
         return parametros
-    except Exception:
-        logger.exception("Falha durante a consulta e ingestão dos dados meteorológicos.")
-        raise
+    except Exception as e:
+        tratar_erro(e, "Falha durante a consulta e ingestão dos dados meteorológicos", encerrar=True)
 
 
 # Executa o bloco abaixo somente quando este arquivo é iniciado diretamente.

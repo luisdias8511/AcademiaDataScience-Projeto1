@@ -1,15 +1,27 @@
 """ETL para qualidade da água - consulta API real da Meersens."""
 
 import json
+import os
 from datetime import datetime
 
 import pandas as pd
 # Importa a biblioteca responsável por realizar requisições HTTP.
 import requests  # type: ignore[import-unresolved]
 
+from dotenv import load_dotenv
+
 from src.database.reading_repository import ReadingRepository
 from src.security import security
+from src.security.log_utils import tratar_erro
 from src.config import logger
+
+# Carrega variáveis de ambiente
+load_dotenv()
+
+# Carrega URL da API do .env
+API_URL_WATER = os.getenv(
+    "API_URL_WATER"
+)
 
 
 # Define a função que recupera a chave da API já processada pelo módulo de segurança.
@@ -32,7 +44,7 @@ def _fetch_water_history(
 ) -> dict:
     """Realiza a requisição HTTP para a API de histórico de qualidade da água."""
     response = requests.get(
-        "https://api.meersens.com/environment/public/water/history",
+        API_URL_WATER,
         headers={"apikey": get_api_key()},
         params={
             "lat": lat,
@@ -159,7 +171,6 @@ def consulta_api(
         print(parametros.head())
 
         return parametros
-    except Exception:
-        logger.exception("Falha durante a consulta e ingestão dos dados de qualidade da água.")
-        raise
+    except Exception as e:
+        tratar_erro(e, "Falha durante a consulta e ingestão dos dados de qualidade da água", encerrar=True)
 

@@ -38,6 +38,7 @@ except Exception as erro:
     # print(f"Erro ao descriptografar a chave de API: {erro}")
     # Configuração de logs - em substuição dos prints() comuns, recursos mais avançados
     # logger.error(f"Erro ao descriptografar a chave de API: {erro}", exc_info=True) # E agora exibe também
+    tratar_erro(erro, "Erro durante a Descriptografia da chave de API", encerrar=False)
     logger.error(f"Erro durante a Descriptografia da chave de API: {erro}", exc_info=True)
     logger.info("Finalizado tratamento de erro para Descriptografia da chave de API")
 

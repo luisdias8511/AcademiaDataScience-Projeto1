@@ -21,6 +21,7 @@ from src.presentation import (
     read_date_range,
     show_statistics_table,
 )
+from src.security.log_utils import tratar_erro
 # FUNÇÃO PRINCIPAL
 # ============================================================================
 
@@ -66,7 +67,7 @@ def main():
         # ====================================================================
         print("\n[5/11] Ingestão de dados meteorológicos...")
         ingestion_service = IngestionService()
-        weather_readings = ingestion_service.get_readings(selected_station, start_date, end_date)
+        weather_readings = ingestion_service.fetch_weather_readings(selected_station, start_date, end_date)
         print(f"✓ {len(weather_readings)} reading(s) meteorológico(s) coletado(s)")
 
         # ====================================================================
@@ -145,8 +146,7 @@ def main():
 
     except Exception as e:
         print(f"\n❌ ERRO: {e}")
-        import traceback
-        traceback.print_exc()
+        tratar_erro(e, "Falha durante execução do pipeline v2", encerrar=True)
 
 
 if __name__ == "__main__":
