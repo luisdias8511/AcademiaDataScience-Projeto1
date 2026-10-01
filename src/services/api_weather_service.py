@@ -79,3 +79,67 @@ class IngestionService:
                 station.id,
             )
             raise
+
+    def get_water_readings(
+        self,
+        station: Station,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[Reading]:
+        """Busca leituras de qualidade da água e converte os valores em objetos de domínio."""
+        logger.info(
+            "Iniciando ingestão de dados de água para estação %s no período %s a %s.",
+            station.id,
+            start_date,
+            end_date,
+        )
+        try:
+            import pandas as pd
+
+            from src.ingestion.etl_water import consulta_api
+
+            api_readings = consulta_api(
+                lat=float(station.latitude),
+                lng=float(station.longitude),
+                from_date=start_date,
+                to_date=end_date,
+            )
+
+            if "datetime" not in api_readings.columns:
+                raise KeyError("A resposta da API não contém a coluna 'datetime'.")
+
+            readings: list[Reading] = []
+
+            for _, row in api_readings.iterrows():
+                values = tuple(
+                    ReadingValue(
+                        parameter_code=column[len("pollutants_") : -len("_value")],
+                        value=Decimal(str(row[column])),
+                    )
+                    for column in api_readings.columns
+                    if column.startswith("pollutants_")
+                    and column.endswith("_value")
+                    if not pd.isna(row[column])
+                )
+
+                if values:
+                    readings.append(
+                        Reading(
+                            station_id=station.id,
+                            timestamp=pd.to_datetime(row["datetime"]).to_pydatetime(),
+                            values=values,
+                        )
+                    )
+
+            logger.info(
+                "Ingestão de água concluída para estação %s: %d leitura(s) coletada(s).",
+                station.id,
+                len(readings),
+            )
+            return readings
+        except Exception:
+            logger.exception(
+                "Falha na ingestão de dados de qualidade da água para estação %s.",
+                station.id,
+            )
+            raise

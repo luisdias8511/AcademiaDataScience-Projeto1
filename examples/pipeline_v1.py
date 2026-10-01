@@ -72,7 +72,7 @@ def main():
         # ETAPA 5: PERSISTÊNCIA (SAVE_MANY)
         # ====================================================================
         print("\n[6/8] Persistindo dados no banco...")
-        reading_ids = repository.save_many(readings)
+        reading_ids = repository.save_many(readings, parameter_category_id=1)
         print(f"✓ {len(reading_ids)} leitura(s) persistida(s)")
 
         # ====================================================================
