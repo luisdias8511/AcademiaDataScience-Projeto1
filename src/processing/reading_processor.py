@@ -7,7 +7,6 @@ from datetime import datetime
 
 from src.models.reading import Reading
 from src.models.reading_value import ReadingValue
-from src.constants import WEATHER_PARAMETERS
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +39,6 @@ class ReadingProcessor:
             if not reading_value.parameter_code:
                 raise ValueError("O código do parâmetro não pode estar vazio.")
 
-            if reading_value.parameter_code not in WEATHER_PARAMETERS.values():
-                raise ValueError(
-                    f"Parâmetro não suportado: {reading_value.parameter_code}."
-                )
-
             try:
                 value_float = float(reading_value.value)
                 if not math.isfinite(value_float):
@@ -73,14 +67,6 @@ class ReadingProcessor:
             valid_values: list[ReadingValue] = []
 
             for reading_value in reading.values:
-                # Verifica se parâmetro é suportado
-                if reading_value.parameter_code not in WEATHER_PARAMETERS.values():
-                    logger.debug(
-                        "Valor ignorado: parâmetro não suportado %s.",
-                        reading_value.parameter_code,
-                    )
-                    continue
-
                 # Verifica se valor é finito
                 try:
                     value_float = float(reading_value.value)

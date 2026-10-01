@@ -1,7 +1,7 @@
-"""Pipeline v1: Fluxo completo simples para estudantes iniciantes.
+"""Pipeline v2: Fluxo completo com dados de weather e water.
 
-Demonstra o fluxo de ponta a ponta:
-Escolha de Estação → Período → Ingestion → Persistência → Recuperação → Analytics → Tabela
+Demonstra o fluxo de ponta a ponta com dois tipos de dados ambientais:
+Escolha de Estação → Período → Ingestion (Weather + Water) → Persistência → Recuperação + Filtros → Analytics → Tabelas
 """
 
 import sys
@@ -25,20 +25,21 @@ from src.presentation import (
 # ============================================================================
 
 def main():
-    """Função principal que orquestra o pipeline completo."""
+    """Função principal que orquestra o pipeline completo com weather e water."""
     try:
         print("\n" + "=" * 90)
-        print("PIPELINE V1 - Análise de Dados Ambientais")
+        print("PIPELINE V2 - Análise de Dados Ambientais (Weather + Water)")
+        print("Executando 11 etapas...")
         print("=" * 90)
 
         # ====================================================================
         # ETAPA 1: CONECTAR AO REPOSITÓRIO E LISTAR ESTAÇÕES
         # ====================================================================
-        print("\n[1/8] Conectando ao banco de dados...")
+        print("\n[1/11] Conectando ao banco de dados...")
         repository = ReadingRepository()
         print("✓ Conexão estabelecida")
 
-        print("\n[2/8] Buscando estações...")
+        print("\n[2/11] Buscando estações...")
         stations = repository.get_stations()
         
         if not stations:
@@ -51,53 +52,92 @@ def main():
         # ====================================================================
         # ETAPA 2: SELECIONAR ESTAÇÃO
         # ====================================================================
-        print("\n[3/8] Selecionando estação...")
+        print("\n[3/11] Selecionando estação...")
         selected_station = select_station(stations)
 
         # ====================================================================
         # ETAPA 3: INFORMAR PERÍODO
         # ====================================================================
-        print("\n[4/8] Informando período...")
+        print("\n[4/11] Informando período...")
         start_date, end_date = read_date_range()
 
         # ====================================================================
-        # ETAPA 4: INGESTION MOCK
+        # ETAPA 4: INGESTION METEOROLÓGICA
         # ====================================================================
-        print("\n[5/8] Ingestão de dados...")
+        print("\n[5/11] Ingestão de dados meteorológicos...")
         ingestion_service = IngestionService()
-        readings = ingestion_service.get_readings(selected_station, start_date, end_date)
-        print(f"✓ {len(readings)} reading(s) coletado(s)")
+        weather_readings = ingestion_service.get_readings(selected_station, start_date, end_date)
+        print(f"✓ {len(weather_readings)} reading(s) meteorológico(s) coletado(s)")
 
         # ====================================================================
-        # ETAPA 5: PERSISTÊNCIA (SAVE_MANY)
+        # ETAPA 5: INGESTION DE ÁGUA
         # ====================================================================
-        print("\n[6/8] Persistindo dados no banco...")
-        reading_ids = repository.save_many(readings)
-        print(f"✓ {len(reading_ids)} leitura(s) persistida(s)")
+        print("\n[6/11] Ingestão de dados de qualidade da água...")
+        water_readings = ingestion_service.get_water_readings(selected_station, start_date, end_date)
+        print(f"✓ {len(water_readings)} reading(s) de água coletado(s)")
 
         # ====================================================================
-        # ETAPA 6: RECUPERAÇÃO DE DADOS
+        # ETAPA 7: PERSISTÔNCIA METEOROLÓGICA
         # ====================================================================
-        print("\n[7/8] Recuperando dados do período...")
-        persisted_readings = repository.get_by_station(
+        print("\n[7/11] Persistindo dados meteorológicos no banco...")
+        weather_ids = repository.save_many(weather_readings, parameter_category_id=1)
+        print(f"✓ {len(weather_ids)} leitura(s) meteorológica(s) persistida(s)")
+
+        # ====================================================================
+        # ETAPA 8: PERSISTÔNCIA DE ÁGUA
+        # ====================================================================
+        print("\n[8/11] Persistindo dados de água no banco...")
+        water_ids = repository.save_many(water_readings, parameter_category_id=2)
+        print(f"✓ {len(water_ids)} leitura(s) de água persistida(s)")
+
+        # ====================================================================
+        # ETAPA 8: RECUPERAÇÃO DE DADOS DO PERÍODO
+        # ====================================================================
+        print("\n[9/11] Recuperando dados do período...")
+        # Filtrar apenas meteorológicos (temperatura, umidade, etc)
+        weather_only = repository.get_by_station(
             selected_station.id,
             start_date,
-            end_date
+            end_date,
+            parameter_category_id=1
         )
-        print(f"✓ {len(persisted_readings)} leitura(s) recuperada(s)")
+
+        # Filtrar apenas de água (pH, turbidez, etc)
+        water_only = repository.get_by_station(
+            selected_station.id,
+            start_date,
+            end_date,
+            parameter_category_id=2
+        )
 
         # ====================================================================
-        # ETAPA 7: ANALYTICS MOCK
+        # ETAPA 10: ANALYTICS METEOROLÓGICO
         # ====================================================================
-        print("\n[8/8] Calculando estatísticas...")
+        print("\n[10/11] Calculando estatísticas (weather + water)...")
         analytics_service = AnalyticsService() # alteração para usar novo módulo AnalyticsService
-        statistics = analytics_service.calculate(persisted_readings)
-        print(f"✓ Estatísticas calculadas para {len(statistics)} parâmetro(s)")
+        weather_statistics = analytics_service.calculate(weather_only)
+        print(f"✓ Estatísticas meteorológicas calculadas para {len(weather_statistics)} parâmetro(s)")
 
         # ====================================================================
-        # ETAPA 8: EXIBIR RESULTADOS
+        # ETAPA 11: ANALYTICS DE ÁGUA
         # ====================================================================
-        show_statistics_table(statistics)
+
+        water_statistics = analytics_service.calculate(water_only)
+        print(f"✓ Estatísticas de água calculadas para {len(water_statistics)} parâmetro(s)")
+
+        # ====================================================================
+        # ETAPA 11: EXIBIR RESULTADOS
+        # ====================================================================
+        print("\n[11/11] Exibindo resultados...")
+        print("\n" + "-" * 90)
+        print("RESULTADOS - DADOS METEOROLÓGICOS")
+        print("-" * 90)
+        show_statistics_table(weather_statistics)
+
+        print("\n" + "-" * 90)
+        print("RESULTADOS - QUALIDADE DA ÁGUA")
+        print("-" * 90)
+        show_statistics_table(water_statistics)
 
         print("\n" + "=" * 90)
         print("✓ PIPELINE CONCLUÍDO COM SUCESSO")

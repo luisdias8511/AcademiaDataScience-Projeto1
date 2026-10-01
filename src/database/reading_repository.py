@@ -100,30 +100,34 @@ class ReadingRepository:
         except Exception as e:
             raise Exception(f"Erro ao buscar estação: {e}")
 
-    def _get_parameter_id_by_code(self, cursor, parameter_code: str) -> int | None:
-        """Busca ID do parâmetro pelo código usando cursor existente."""
+    def _get_parameter_id_by_code(self, cursor, parameter_code: str, parameter_category_id: int) -> int | None:
+        """Busca ID do parâmetro pelo código da API usando cursor existente.
+        
+        Busca pelo CodeApi (da API).
+        """
         try:
             cursor.execute(
-                "SELECT Id FROM Parameters WHERE CodeApi = ?",
+                "SELECT Id FROM Parameters WHERE CodeApi = ? AND CategoryId = ?",
                 parameter_code,
+                parameter_category_id,
             )
             row = cursor.fetchone()
             return row[0] if row else None
         except Exception as e:
             raise Exception(f"Erro ao buscar parâmetro: {e}")
 
-    def get_parameter_id_by_code(self, parameter_code: str) -> int | None:
+    def get_parameter_id_by_code(self, parameter_code: str, parameter_category_id: int) -> int | None:
         """Busca ID do parâmetro pelo código (para uso externo)."""
         try:
             self._connect()
             cursor = self.conn.cursor()
-            param_id = self._get_parameter_id_by_code(cursor, parameter_code)
+            param_id = self._get_parameter_id_by_code(cursor, parameter_code, parameter_category_id)
             self._disconnect()
             return param_id
         except Exception as e:
             raise Exception(f"Erro ao buscar parâmetro: {e}")
 
-    def save(self, reading: Reading) -> int:
+    def save(self, reading: Reading, parameter_category_id: int) -> int:
         """Persiste uma leitura no banco com transação."""
         try:
             self._connect()
@@ -159,7 +163,7 @@ class ReadingRepository:
 
             # Insere valores na tabela ReadingValues
             for value in reading.values:
-                param_id = self._get_parameter_id_by_code(cursor, value.parameter_code)
+                param_id = self._get_parameter_id_by_code(cursor, value.parameter_code, parameter_category_id)
                 if not param_id:
                     self.conn.rollback()
                     self._disconnect()
@@ -200,11 +204,16 @@ class ReadingRepository:
             self._disconnect()
             raise Exception(f"Erro ao persistir leitura: {e}")
 
-    def save_many(self, readings: Sequence[Reading]) -> list[int]:
-        """Persiste múltiplas leituras no banco."""
+    def save_many(self, readings: Sequence[Reading], parameter_category_id: int) -> list[int]:
+        """Persiste múltiplas leituras no banco.
+        
+        Args:
+            readings: Sequência de leituras a persistir
+            parameter_category_id: Categoria dos parâmetros (1=Weather, 2=Water). Obrigatório.
+        """
         reading_ids: list[int] = []
         for reading in readings:
-            reading_id = self.save(reading)
+            reading_id = self.save(reading, parameter_category_id)
             reading_ids.append(reading_id)
         return reading_ids
 
@@ -213,14 +222,23 @@ class ReadingRepository:
         parameter_code: str,
         start_date: datetime,
         end_date: datetime,
+        parameter_category_id: int,
         station_id: int | None = None,
     ) -> list[float]:
-        """Busca valores de um parâmetro em um período."""
+        """Busca valores de um parâmetro em um período.
+        
+        Args:
+            parameter_code: Código do parâmetro
+            start_date: Data inicial
+            end_date: Data final
+            parameter_category_id: Categoria dos parâmetros (1=Weather, 2=Water). Obrigatório.
+            station_id: ID da estação (opcional)
+        """
         try:
             self._connect()
             cursor = self.conn.cursor()
 
-            param_id = self._get_parameter_id_by_code(cursor, parameter_code)
+            param_id = self._get_parameter_id_by_code(cursor, parameter_code, parameter_category_id)
             if not param_id:
                 self._disconnect()
                 return []
@@ -275,6 +293,7 @@ class ReadingRepository:
         station_id: int,
         start_date: datetime,
         end_date: datetime,
+        parameter_category_id: int,
     ) -> list[Reading]:
         """Busca leituras de uma estação em um período."""
         try:
@@ -290,13 +309,17 @@ class ReadingRepository:
 
             cursor.execute(
                 """
-                SELECT r.Id, r.StationId, r.DateTime
+                SELECT DISTINCT r.Id, r.StationId, r.DateTime
                 FROM Readings r
+                INNER JOIN ReadingValues rv ON r.Id = rv.ReadingId
+                INNER JOIN Parameters p ON rv.ParameterId = p.Id
                 WHERE r.StationId = ?
+                  AND p.CategoryId = ?
                   AND r.DateTime BETWEEN ? AND ?
                 ORDER BY r.DateTime
                 """,
                 station_id,
+                parameter_category_id,
                 start_date,
                 end_date,
             )
