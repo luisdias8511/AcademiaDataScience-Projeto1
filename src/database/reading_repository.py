@@ -104,7 +104,7 @@ class ReadingRepository:
         """Busca ID do parâmetro pelo código usando cursor existente."""
         try:
             cursor.execute(
-                "SELECT Id FROM Parameters WHERE Code = ?",
+                "SELECT Id FROM Parameters WHERE CodeApi = ?",
                 parameter_code,
             )
             row = cursor.fetchone()
@@ -430,7 +430,23 @@ class ReadingRepository:
             self._connect()
             cursor = self.conn.cursor()
             cursor.execute(
-                "SELECT Code FROM Parameters ORDER BY Code"
+                "SELECT CodeApi FROM Parameters WHERE CategoryId = 1 ORDER BY CodeApi"
+            )
+            rows = cursor.fetchall()
+            self._disconnect()
+
+            codes = [row[0] for row in rows]
+            return codes
+        except Exception as e:
+            raise Exception(f"Erro ao buscar códigos de parâmetros: {e}")
+
+    def get_water_parameters_codes(self) -> list[str]:
+        """Busca os códigos de todos os parâmetros hídricos cadastrados."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT CodeApi FROM Parameters WHERE CategoryId = 2 ORDER BY CodeApi"
             )
             rows = cursor.fetchall()
             self._disconnect()
