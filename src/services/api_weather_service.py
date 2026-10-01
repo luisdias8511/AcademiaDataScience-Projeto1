@@ -7,16 +7,17 @@ from src.models.reading import Reading
 from src.models.reading_value import ReadingValue
 from src.models.station import Station
 from src.config import logger
+from src.security.log_utils import tratar_erro
 
 
 class IngestionService:
-    """Simula um serviço de ingestão de dados sem chamar APIs reais."""
+    """Serviço de ingestão de dados meteorológicos e de qualidade da água."""
 
     def __init__(self):
         """Inicializa o serviço de ingestion."""
         pass
 
-    def get_readings(
+    def fetch_weather_readings(
         self,
         station: Station,
         start_date: datetime,
@@ -73,12 +74,12 @@ class IngestionService:
                 len(readings),
             )
             return readings
-        except Exception:
-            logger.exception(
-                "Falha na ingestão de dados meteorológicos para estação %s.",
-                station.id,
+        except Exception as e:
+            tratar_erro(
+                e,
+                f"Falha na ingestão de dados meteorológicos para estação {station.id}",
+                encerrar=True,
             )
-            raise
 
     def get_water_readings(
         self,
@@ -137,9 +138,9 @@ class IngestionService:
                 len(readings),
             )
             return readings
-        except Exception:
-            logger.exception(
-                "Falha na ingestão de dados de qualidade da água para estação %s.",
-                station.id,
+        except Exception as e:
+            tratar_erro(
+                e,
+                f"Falha na ingestão de dados de qualidade da água para estação {station.id}",
+                encerrar=True,
             )
-            raise

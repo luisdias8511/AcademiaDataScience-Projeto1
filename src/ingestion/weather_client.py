@@ -1,12 +1,18 @@
 """Cliente para consumir a API meteorológica da Meersens."""
 
+import os
 from datetime import datetime
 from decimal import Decimal
 
 import requests  # type: ignore[import-unresolved]
 
+from dotenv import load_dotenv
+
 from src.security import security
 from src.config import logger
+
+# Carrega variáveis de ambiente
+load_dotenv()
 
 
 def get_api_key() -> str:
@@ -37,7 +43,9 @@ class MeersensWeatherClient:
     - Retornar JSON bruto sem transformação
     """
 
-    API_URL = "https://api.meersens.com/environment/public/weather/history"
+    API_URL = os.getenv(
+        "API_URL_TEMP"
+    )
     TIMEOUT = 30
 
     def __init__(self) -> None:
