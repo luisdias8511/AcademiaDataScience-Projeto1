@@ -14,7 +14,7 @@ sys.path.insert(0, str(project_root))
 
 from src.database.reading_repository import ReadingRepository
 from src.services.api_weather_service import IngestionService
-from src.analytics.mock_service import MockAnalyticsService
+from src.analytics.service import AnalyticsService # alteração de mock para analytics.service
 from src.presentation import (
     show_stations,
     select_station,
@@ -90,7 +90,7 @@ def main():
         # ETAPA 7: ANALYTICS MOCK
         # ====================================================================
         print("\n[8/8] Calculando estatísticas...")
-        analytics_service = MockAnalyticsService()
+        analytics_service = AnalyticsService() # alteração para usar novo módulo AnalyticsService
         statistics = analytics_service.calculate(persisted_readings)
         print(f"✓ Estatísticas calculadas para {len(statistics)} parâmetro(s)")
 

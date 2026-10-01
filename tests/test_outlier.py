@@ -1,9 +1,9 @@
-import unittest
+import unittest #importa a ferramenta de testes da bibilteca padrão do python.
 
-from src.analytics.outliers import identificar_outliers
+from src.analytics.outliers import identificar_outliers #Importa a função
 
 
-class TestIdentificarOutliers(unittest.TestCase):
+class TestIdentificarOutliers(unittest.TestCase): #chama identifficar_outliers para verificar Q1 e Q3
     def test_identifica_outliers_dos_dois_lados(self):
         resultado = identificar_outliers(
             valores=[-3.0, -2.0, 2.0, 6.0, 7.0],
@@ -16,7 +16,7 @@ class TestIdentificarOutliers(unittest.TestCase):
         self.assertEqual(resultado["limite_superior"], 6.0)
         self.assertEqual(resultado["outliers"], [-3.0, 7.0])
 
-    def test_valores_iguais_aos_limites_nao_sao_outliers(self):
+    def test_valores_iguais_aos_limites_nao_sao_outliers(self): #testa limites com valores pré setados para verificar os outliers
         resultado = identificar_outliers(
             valores=[-2.0, 2.0, 6.0],
             q1=1.0,
