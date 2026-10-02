@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 
@@ -19,6 +20,18 @@ load_dotenv()
 API_URL_WEATHER = os.getenv(
     "API_URL_TEMP"
 )
+
+# Cache de parâmetros para evitar múltiplas consultas ao BD
+_weather_params_cache = None
+
+
+def get_weather_parameters_cached() -> list[str]:
+    """Retorna parâmetros do cache (sem consultar BD múltiplas vezes)."""
+    global _weather_params_cache
+    if _weather_params_cache is None:
+        repository = ReadingRepository()
+        _weather_params_cache = repository.get_weather_parameters_codes()
+    return _weather_params_cache
 
 
 # Define a função que recupera a chave da API já processada pelo módulo de segurança.
@@ -115,8 +128,8 @@ def consulta_api(
         to_date,
     )
     try:
-        repository = ReadingRepository()
-        parameter_codes = repository.get_weather_parameters_codes()
+        # Usar cache de parâmetros (não consultar BD múltiplas vezes)
+        parameter_codes = get_weather_parameters_cached()
 
         pages: list[pd.DataFrame] = []
         seen_pages: set[str] = set()
@@ -134,7 +147,10 @@ def consulta_api(
             if page_df.empty:
                 break
 
-            page_signature = json.dumps(payload["values"], sort_keys=True, default=str)
+            # Hash MD5 (32 bytes) em vez de JSON completo (50KB+)
+            page_json = json.dumps(payload["values"], default=str)
+            page_signature = hashlib.md5(page_json.encode()).hexdigest()
+            
             if page_signature in seen_pages:
                 raise RuntimeError(
                     f"A API repetiu os dados da página {page}; "
