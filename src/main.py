@@ -2,8 +2,14 @@
 
 Demonstra o fluxo de ponta a ponta com dois tipos de dados ambientais:
 Escolha de Estação → Período → Ingestion (Weather + Water) → Persistência → Recuperação + Filtros → Analytics → Tabelas
+
+EXECUTAR:
+- Interface Streamlit (padrão):  python -m src.main
+- Interface CLI:                 python -m src.main --cli
 """
 
+import sys
+import subprocess
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -34,11 +40,12 @@ def fetch_water_task(ingestion_service, station, start_date, end_date):
     """Task para executar ingestion de water em thread paralela."""
     return ("water", ingestion_service.get_water_readings(station, start_date, end_date))
 
-# FUNÇÃO PRINCIPAL
+# ============================================================================
+# PIPELINE CLI
 # ============================================================================
 
-def main():
-    """Função principal que orquestra o pipeline completo com weather e water."""
+def run_cli_pipeline():
+    """Executa o pipeline via interface de linha de comando (console)."""
     try:
         print("\n" + "=" * 90)
         print("PIPELINE PRINCIPAL - Análise de Dados Ambientais (Weather + Water)")
@@ -194,6 +201,43 @@ def main():
     except Exception as e:
         print(f"\n❌ ERRO: {e}")
         tratar_erro(e, "Falha durante execução do pipeline principal", encerrar=True)
+
+
+# ============================================================================
+# PIPELINE STREAMLIT
+# ============================================================================
+
+def run_streamlit_pipeline():
+    """Executa o pipeline via interface Streamlit (Web UI)."""
+    import os
+    from pathlib import Path
+    
+    # Obter caminho do arquivo streamlit_app.py
+    streamlit_app = Path(__file__).parent / "presentation" / "streamlit_app.py"
+    
+    if not streamlit_app.exists():
+        print(f"❌ Erro: Arquivo {streamlit_app} não encontrado")
+        return
+    
+    print(f"\n🚀 Iniciando interface Streamlit...")
+    print(f"📂 Aplicação: {streamlit_app}\n")
+    
+    # Executar streamlit
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(streamlit_app)])
+
+
+# ============================================================================
+# FUNÇÃO PRINCIPAL
+# ============================================================================
+
+def main():
+    """Função principal que escolhe entre CLI ou Streamlit."""
+    # Verificar se usuário solicitou modo CLI
+    if "--cli" in sys.argv:
+        run_cli_pipeline()
+    else:
+        # Por padrão, executar Streamlit
+        run_streamlit_pipeline()
 
 
 if __name__ == "__main__":
