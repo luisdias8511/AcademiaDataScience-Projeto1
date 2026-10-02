@@ -16,6 +16,10 @@ from src.presentation import (
     read_date_range,
     show_statistics_table,
 )
+from src.reporting import (
+    export_statistics_to_csv,
+    export_statistics_with_outliers_detail,
+)
 from src.security.log_utils import tratar_erro
 
 # ============================================================================
@@ -163,11 +167,25 @@ def main():
         print("RESULTADOS - DADOS METEOROLÓGICOS")
         print("-" * 90)
         show_statistics_table(weather_statistics)
+        
+        # Exportar estatísticas meteorológicas para CSV
+        weather_csv_path = export_statistics_to_csv(weather_statistics, "weather")
+        weather_outliers_path = export_statistics_with_outliers_detail(weather_statistics, "weather")
+        print(f"\n✓ Dados meteorológicos exportados para:")
+        print(f"  - {weather_csv_path}")
+        print(f"  - {weather_outliers_path}")
 
         print("\n" + "-" * 90)
         print("RESULTADOS - QUALIDADE DA ÁGUA")
         print("-" * 90)
         show_statistics_table(water_statistics)
+        
+        # Exportar estatísticas de água para CSV
+        water_csv_path = export_statistics_to_csv(water_statistics, "water")
+        water_outliers_path = export_statistics_with_outliers_detail(water_statistics, "water")
+        print(f"\n✓ Dados de qualidade da água exportados para:")
+        print(f"  - {water_csv_path}")
+        print(f"  - {water_outliers_path}")
 
         print("\n" + "=" * 90)
         print("✓ PIPELINE CONCLUÍDO COM SUCESSO")

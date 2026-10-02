@@ -8,6 +8,10 @@
 /logs
 *.log
 
+# Ignore resultados/exportações
+/results
+*.csv
+
 # Ignore virtual environment directories
 venv/
 
