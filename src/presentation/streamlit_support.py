@@ -95,7 +95,7 @@ def statistics_to_rows(
     """
     return [
         {
-            "Parâmetro": result.parameter_code,
+            "Parâmetro": result.parameter_name or result.parameter_code,
             "Quantidade": result.count,
             "Média": f"{result.average:.2f}",
             "Mediana": f"{result.median:.2f}",
@@ -420,7 +420,7 @@ def run_pipeline(
         
         st.write("Calculando as estatísticas...")
         
-        analytics_service = AnalyticsService()
+        analytics_service = AnalyticsService(repository)
         weather_statistics, water_statistics = calculate_statistics(
             analytics_service,
             weather_from_db,

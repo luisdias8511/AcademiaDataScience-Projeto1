@@ -155,7 +155,7 @@ def run_cli_pipeline():
         # ETAPA 9: ANALYTICS METEOROLÓGICO
         # ====================================================================
         print("\n[9/11] Calculando estatísticas (weather + water)...")
-        analytics_service = AnalyticsService()
+        analytics_service = AnalyticsService(repository)
         weather_statistics = analytics_service.calculate(weather_only)
         print(f"✓ Estatísticas meteorológicas calculadas para {len(weather_statistics)} parâmetro(s)")
 
