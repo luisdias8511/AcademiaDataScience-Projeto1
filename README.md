@@ -1,288 +1,172 @@
-# AcademiaDataScience-Projeto1
-Academia Data Science - Projeto 1
+# 🌍 Environmental Monitoring - Data Science Project
 
-Projeto Prático Integrador: Pipeline de Monitoramento e Análise de Dados Ambientais
+**Projeto Prático Integrador**: Pipeline completo de ingestão, processamento, análise e visualização de dados ambientais
 
-Objetivo Geral
+## 📋 Visão Geral
 
-Desenvolver uma aplicação completa em Python para capturar, tratar, analisar, persistir e disponibilizar dados de estações de monitoramento ambiental (qualidade da água e dados meteorológicos), aplicando boas práticas de código, segurança, estatística e controle de versão.
+Aplicação Python end-to-end para monitorar qualidade da água e dados meteorológicos de múltiplas estações, com:
+- ✅ Ingestão automática de APIs (Meersens)
+- ✅ ETL com validação e limpeza de dados
+- ✅ Armazenamento em SQL Server
+- ✅ Análise estatística com detecção de outliers
+- ✅ Interface web interativa (Streamlit) e CLI
+- ✅ Cobertura de testes de 58%+ (286+ testes)
 
-
-=============================================
-Escopo do MVP
-=============================================
- 
-Fonte de Dados 
-
-    Ingestão JSON da API (ou arquivo JSON) 
-        https://open-meteo.com 
-
-            https://api.open-meteo.com/v1/forecast?latitude=-23.5475&longitude=-46.63611  
-
-            https://partners.meersens.com/ 
- 
-
-    Validação e limpeza de dados; 
-
-    Anominazação; 
-    
-    Persistência Banco SQL Server 
-    com quatro tabelas:  
-        Stations (metadados das estações) 
-        ID Code Name Latitude Longitude  
-
-        Readings (dados temporais) 
-        DateTime StationId  
-
-        Parameters (parâmetros de monitoramento)
-        ID Code Name Unit
-
-        ReadingValues (valores de leitura)
-        ID ReadingId ParameterId Value 
- 
-    Consulta SQL 
-
-    Analise estatistica: 
-        Tendência central: Média e Mediana. 
-        Dispersão: Desvio Padrão e Intervalo Interquartil. 
-        Identificar registros anômalos (outliers) utilizando a regra do amplitude interquartil (IQR). 
-
-    Relatório no terminal OU Textual 
-
-=============================================
-Retorno das APIs
-=============================================
-
-API Weather
-            "parameters": { 
-
-                "apparent_temperature": { 
-
-                    "name": "Apparent temperature",                     
-
-                    "value": 21.06, 
-
-                    "unit": "°C",                  
-
-                }, 
-
-                "cloud_cover": { 
-
-                    "name": "Cloud cover",               
-
-                    "value": 97, 
-
-                    "unit": "%",                     
-
-                }, 
-
-                "humidity": { 
-
-                    "name": "Humidity",                   
-
-                    "value": 64.37, 
-
-                    "unit": "%",                  
-
- 
-
-                }, 
-
-                "precipitations": {                   
-
-                    "name": "Precipitations",               
-
- 
-
-                    "unit": "mm", 
-
-                    "value": 0,                    
-
-                }, 
-
-                "pressure": {                   
-
-                    "name": "Pressure",                    
-
-                    "value": 972.82, 
-
-                    "unit": "hPa",                   
-
-                }, 
-
-                "temperature": {                    
-
-                    "name": "Temperature",                     
-
-                    "value": 21.06, 
-
-                    "unit": "°C",                
-
-                }, 
-
-                "wind_direction": {                    
-
-                    "name": "Wind direction",   
-
-                    "value": 252.99, 
-
-                    "unit": "°",                 
-
- 
-
-                }, 
-
-                "wind_speed": { 
-
-                    "name": "Wind speed", 
-
-                    "value": 8.99, 
-
-                    "unit": "km/h",                 
-
-                } 
-
-} 
-
-
-WATER:
-
-"pollutants": {     
-    "pH": { 
-        "name": "pH", 
-        "unit": "", 
-        "value": 7.4, 
-        }, 
-
-} 
-
-=============================================
-DER
-=============================================
-
-┌────────────────────────┐
-│      STATIONS          
-├────────────────────────┤
-│ Id (PK)                
-│ Code                   
-│ Name                   
-│ Latitude               
-│ Longitude              
-└────────────┬───────────┘
-             │
-             │ 1:N
-             │
-┌────────────▼───────────┐
-│      READINGS          
-├────────────────────────┤
-│ Id (PK)                
-│ StationId (FK)         
-│ DateTime               
-└────────────┬───────────┘
-             │
-             │ 1:N
-             │
-┌────────────▼───────────┐
-│   READINGVALUES        
-├────────────────────────┤
-│ Id (PK)                
-│ ReadingId (FK)         
-│ ParameterId (FK)       
-│ Value                  
-└────────────┬───────────
-             │
-             │ N:1
-             │
-┌────────────▼───────────┐
-│      PARAMETERS        
-├────────────────────────┤
-│ Id (PK)                
-│ Code                   
-│ Name                   
-│ Unit                   
-└────────────────────────┘
-
-========================================================
-SQL Server
-========================================================
-
-Este projeto utiliza SQL Server Express com Windows Authentication.
-
-**Pré-requisitos:**
-- SQL Server Express 2019 ou superior
-- ODBC Driver 18 for SQL Server
-- Windows Authentication habilitado
-
-**Configuração de Conexão:**
-
-O projeto usa `Trusted_Connection=yes` para autenticação Windows.
-Não é necessário informar usuário ou senha SQL Server.
-
-```python
-connection_string = (
-    "DRIVER={ODBC Driver 18 for SQL Server};"
-    "SERVER=localhost\\SQLEXPRESS;"
-    "DATABASE=EnvironmentalMonitoring;"
-    "Trusted_Connection=yes;"
-    "TrustServerCertificate=yes;"
-)
-```
-
-**Variáveis de Ambiente:**
-
-Crie arquivo `.env` na raiz do projeto:
-
-```
-SQL_SERVER=localhost\SQLEXPRESS
-SQL_DATABASE=EnvironmentalMonitoring
-```
-
-**Inicializar Banco de Dados:**
-
-Execute os scripts na ordem:
+## 🚀 Quick Start
 
 ```bash
-sqlcmd -S localhost\SQLEXPRESS -E -i sql/CREATE_DATABASE.sql
-sqlcmd -S localhost\SQLEXPRESS -E -i sql/CREATE_TABLES.sql
-sqlcmd -S localhost\SQLEXPRESS -E -i sql/POPULATE_DATABASE.sql
+# Instalação
+pip install -r requirements.txt
+
+# Interface Web
+python -m streamlit run examples/streamlit_app.py
+
+# CLI
+python -m src.main --cli
+
+# Testes
+python tests/run_tests.py --coverage
 ```
 
-========================================================
-Estrutura Inicial do repositório:
-========================================================
+## 📁 Estrutura do Projeto
 
-AcademiaDataScience-Projeto1/
-├── .github/
-├── data/
-│   ├── raw/
-│   └── processed/
-├── database/
-├── docs/
-│   ├── architecture.md
-│   ├── data_dictionary.md
-├── reports/
-├── sql/
-│   ├── ANALYTICAL_QUERIES.sql
-│   └── CREATE_DATABASE.sql
-│   └── CREATE_TABLES.sql
-├── src/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── config.py
-│   ├── ingestion/
-│   │   ├── __init__.py
-│   ├── processing/
-│   │   ├── __init__.py
-│   ├── database/
-│   │   ├── __init__.py
-│   ├── analytics/
-│   │   ├── __init__.py
-│   └── reporting/
-│       ├── __init__.py
-├── tests/
-│   ├── fixtures/
-├── .env.example
-├── .gitignore
-├── pyproject.toml
-├── requirements.txt
-└── README.md
+```
+src/
+├── main.py                 # Pipeline orquestrador
+├── config.py               # Configurações globais
+├── analytics/              # Análise estatística
+├── database/               # Acesso a dados (SQL Server)
+├── ingestion/              # ETL (weather + water)
+├── models/                 # Modelos de domínio
+├── processing/             # Processamento de dados
+├── reporting/              # Exportação (CSV)
+├── security/               # Criptografia e logs
+└── presentation/           # Streamlit UI
+tests/                      # 286+ testes (58% cobertura)
+docs/                       # Documentação
+```
+
+## 📚 Documentação
+
+- [Architecture](docs/ARCHITECTURE.md) - Design de sistema
+- [Setup & Installation](docs/SETUP.md) - Ambiente
+- [API Integration](docs/API.md) - Endpoints externos
+- [Module Reference](docs/MODULES.md) - Modelos e serviços
+- [Tests Guide](tests/README.md) - Como rodar testes
+
+## 🎯 Features
+
+### Core Pipeline
+- **Ingestão Paralela**: Weather + Water APIs em simultâneo
+- **ETL Robusto**: Validação, normalização, caching
+- **Persistência**: SQL Server com ACID compliance
+- **Analytics**: Estatísticas avançadas + outlier detection
+- **Exportação**: CSV com formatação automática
+
+### User Interface
+- **Streamlit Web**: Seleção de estação, intervalo, visualização
+- **CLI**: Pipeline de 11 etapas com logging
+- **Responsivo**: Download de CSV, múltiplas estações
+
+### Code Quality
+- **Type-safe**: Type hints em 100% do código
+- **Test Coverage**: 286+ testes (58% cobertura)
+- **Security**: Criptografia AES-256, auditoria de logs
+- **Performance**: Parallel ingestion, batch operations, caching
+
+## 📊 Statistics Calculated
+
+Por parâmetro:
+- **Tendência Central**: Média, Mediana
+- **Dispersão**: Desvio Padrão, IQR
+- **Anomalias**: Outliers via regra IQR (1.5 × IQR)
+- **Distribuição**: Q1, Q3, bounds
+
+## 🗄️ Database Schema
+
+```
+Stations ──┐
+           ├──> Readings ──> ReadingValues ──> Parameters
+           └────────────────────────────────────────┘
+```
+
+**Tabelas:**
+- Stations: Metadados das estações
+- Readings: Dados temporais
+- Parameters: Catálogo de parâmetros monitorados
+- ReadingValues: Valores medidos
+
+## 🔒 Security
+
+- Chaves API criptografadas em repouso
+- Logs com rastreabilidade completa
+- Sanitização de URLs sensíveis
+- Connection pooling seguro
+
+## 🧪 Testing
+
+```bash
+# Todos os testes
+python tests/run_tests.py --coverage
+
+# Por marcador
+python tests/run_tests.py --unit
+python tests/run_tests.py --integration
+python tests/run_tests.py --database
+python tests/run_tests.py --analytics
+```
+
+**Estatísticas:**
+- 286+ testes
+- 58% cobertura geral
+- 100% ETL water
+- 96% ETL weather
+- 95% main.py
+- 3s tempo total de execução
+
+## 📝 Logging
+
+Logs estruturados em `logs/app.log`:
+- INFO: Operações normais
+- WARNING: Situações anômalas
+- ERROR: Erros com contexto completo
+- DEBUG: Detalhes técnicos
+
+## 🛠️ Technology Stack
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Language | Python 3.14.7 |
+| Data | pandas, Decimal |
+| Database | SQL Server (pyodbc) |
+| APIs | requests |
+| UI | Streamlit |
+| Testing | pytest (286+ testes) |
+| Security | cryptography |
+
+## 📖 Development
+
+Leia [SETUP.md](docs/SETUP.md) para ambiente local.
+
+Principais arquivos para customização:
+- `src/config.py` - Configurações globais
+- `src/constants.py` - Constantes da aplicação
+- `sql/CREATE_TABLES.sql` - Schema do banco
+
+## 📄 License
+
+Projeto acadêmico
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Create feature branch
+3. Add tests
+4. Ensure 58%+ coverage
+5. Submit PR
+
+## 📞 Support
+
+Consulte `logs/app.log` para detalhes de erros.
+
+Documentação técnica: [docs/](docs/) folder.
