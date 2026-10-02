@@ -35,6 +35,7 @@ class StatisticsResult:
     lower_bound: float
     upper_bound: float
     outliers: tuple[float, ...]
+    parameter_name: str | None = None
 
     def __post_init__(self) -> None:
         """Valida os invariantes do resultado estatístico após inicialização."""

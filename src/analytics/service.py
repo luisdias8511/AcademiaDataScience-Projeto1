@@ -4,12 +4,22 @@ from collections import defaultdict
 
 from src.models.reading import Reading
 from src.models.statistics_result import StatisticsResult
+from src.database.reading_repository import ReadingRepository
 
 from .statistics import calcular_estatisticas
 
 
 class AnalyticsService:
     """Calcula estatísticas por parâmetro para uma única estação."""
+
+    def __init__(self, repository: ReadingRepository | None = None) -> None:
+        """Inicializa o serviço com repositório opcional para buscar nomes de parâmetros.
+        
+        Args:
+            repository: Repositório de leitura (opcional). Se não fornecido,
+                       apenas código será usado.
+        """
+        self.repository = repository
 
     def calculate(
         self, readings: list[Reading]
@@ -44,8 +54,16 @@ class AnalyticsService:
 
             calculated = calcular_estatisticas(values)
 
+            # Tentar buscar o nome do parâmetro
+            parameter_name = None
+            if self.repository:
+                parameter = self.repository.get_parameter_by_code(parameter_code)
+                if parameter:
+                    parameter_name = parameter.name
+
             result = StatisticsResult(
                 parameter_code=parameter_code,
+                parameter_name=parameter_name,
                 count=len(values),
                 average=calculated["media"],
                 median=calculated["mediana"],

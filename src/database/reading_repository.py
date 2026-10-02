@@ -6,6 +6,11 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from decimal import Decimal
 
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
+
 from src.models.reading import Reading
 from src.models.station import Station
 from src.models.parameter import Parameter
@@ -64,8 +69,12 @@ class ReadingRepository:
 
     def _connect(self):
         """Estabelece conexão com banco de dados."""
+        if pyodbc is None:
+            raise ImportError(
+                "pyodbc não está instalado. "
+                "Instale com: pip install pyodbc"
+            )
         try:
-            import pyodbc
             self.conn = pyodbc.connect(self.connection_string)
         except Exception as e:
             raise Exception(f"Falha ao conectar ao banco: {e}")
@@ -406,7 +415,7 @@ class ReadingRepository:
             self._connect()
             cursor = self.conn.cursor()
             cursor.execute(
-                "SELECT Id, Code, Name, Unit FROM Parameters WHERE Code = ?",
+                "SELECT Id, Code, CodeApi, Name, Unit, CategoryId FROM Parameters WHERE Code = ?",
                 parameter_code,
             )
             row = cursor.fetchone()
@@ -416,8 +425,10 @@ class ReadingRepository:
                 return Parameter(
                     id=row[0],
                     code=row[1],
-                    name=row[2],
-                    unit=row[3],
+                    code_api=row[2],
+                    name=row[3],
+                    unit=row[4],
+                    category_id=row[5],
                 )
             return None
         except Exception as e:

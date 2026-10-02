@@ -27,4 +27,13 @@ __pycache__/
 
 # (Optional) Jython bytecode
 *$py.class
-*$py.class
+
+# Ignore test coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Ignore temporary test output files
+check_output.txt
+*.tmp
