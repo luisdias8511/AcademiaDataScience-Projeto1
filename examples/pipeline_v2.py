@@ -7,6 +7,7 @@ Escolha de Estação → Período → Ingestion (Weather + Water) → Persistên
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Adicionar raiz do projeto ao path
 project_root = Path(__file__).parent.parent
@@ -22,6 +23,19 @@ from src.presentation import (
     show_statistics_table,
 )
 from src.security.log_utils import tratar_erro
+
+# ============================================================================
+# FUNÇÕES DE INGESTION PARALELA
+# ============================================================================
+
+def fetch_weather_task(ingestion_service, station, start_date, end_date):
+    """Task para executar ingestion de weather em thread paralela."""
+    return ("weather", ingestion_service.fetch_weather_readings(station, start_date, end_date))
+
+def fetch_water_task(ingestion_service, station, start_date, end_date):
+    """Task para executar ingestion de water em thread paralela."""
+    return ("water", ingestion_service.get_water_readings(station, start_date, end_date))
+
 # FUNÇÃO PRINCIPAL
 # ============================================================================
 
@@ -63,38 +77,59 @@ def main():
         start_date, end_date = read_date_range()
 
         # ====================================================================
-        # ETAPA 4: INGESTION METEOROLÓGICA
+        # ETAPA 5: INGESTION PARALELA (Weather + Water)
         # ====================================================================
-        print("\n[5/11] Ingestão de dados meteorológicos...")
+        print("\n[5/11] Ingestão de dados (Weather + Water)...")
         ingestion_service = IngestionService()
-        weather_readings = ingestion_service.fetch_weather_readings(selected_station, start_date, end_date)
-        print(f"✓ {len(weather_readings)} reading(s) meteorológico(s) coletado(s)")
+        weather_readings = None
+        water_readings = None
+        
+        # Usar ThreadPoolExecutor para executar Weather e Water em paralelo
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            # Submeter ambas as tarefas
+            future_weather = executor.submit(
+                fetch_weather_task, 
+                ingestion_service, 
+                selected_station, 
+                start_date, 
+                end_date
+            )
+            future_water = executor.submit(
+                fetch_water_task, 
+                ingestion_service, 
+                selected_station, 
+                start_date, 
+                end_date
+            )
+            
+            # Processar resultados conforme completam
+            for future in as_completed([future_weather, future_water]):
+                tipo, readings = future.result()
+                if tipo == "weather":
+                    weather_readings = readings
+                    print(f"  ✓ {len(weather_readings)} reading(s) meteorológico(s) coletado(s)")
+                elif tipo == "water":
+                    water_readings = readings
+                    print(f"  ✓ {len(water_readings)} reading(s) de água coletado(s)")
 
         # ====================================================================
-        # ETAPA 5: INGESTION DE ÁGUA
+        # ETAPA 6: PERSISTÔNCIA METEOROLÓGICA
         # ====================================================================
-        print("\n[6/11] Ingestão de dados de qualidade da água...")
-        water_readings = ingestion_service.get_water_readings(selected_station, start_date, end_date)
-        print(f"✓ {len(water_readings)} reading(s) de água coletado(s)")
-
-        # ====================================================================
-        # ETAPA 7: PERSISTÔNCIA METEOROLÓGICA
-        # ====================================================================
-        print("\n[7/11] Persistindo dados meteorológicos no banco...")
+        print("\n[6/11] Persistindo dados meteorológicos no banco...")
         weather_ids = repository.save_many(weather_readings, parameter_category_id=1)
         print(f"✓ {len(weather_ids)} leitura(s) meteorológica(s) persistida(s)")
 
         # ====================================================================
-        # ETAPA 8: PERSISTÔNCIA DE ÁGUA
+        # ETAPA 7: PERSISTÔNCIA DE ÁGUA
         # ====================================================================
-        print("\n[8/11] Persistindo dados de água no banco...")
+        print("\n[7/11] Persistindo dados de água no banco...")
         water_ids = repository.save_many(water_readings, parameter_category_id=2)
         print(f"✓ {len(water_ids)} leitura(s) de água persistida(s)")
 
         # ====================================================================
         # ETAPA 8: RECUPERAÇÃO DE DADOS DO PERÍODO
         # ====================================================================
-        print("\n[9/11] Recuperando dados do período...")
+        print("\n[8/11] Recuperando dados do período...")
         # Filtrar apenas meteorológicos (temperatura, umidade, etc)
         weather_only = repository.get_by_station(
             selected_station.id,
@@ -112,15 +147,15 @@ def main():
         )
 
         # ====================================================================
-        # ETAPA 10: ANALYTICS METEOROLÓGICO
+        # ETAPA 9: ANALYTICS METEOROLÓGICO
         # ====================================================================
-        print("\n[10/11] Calculando estatísticas (weather + water)...")
-        analytics_service = AnalyticsService() # alteração para usar novo módulo AnalyticsService
+        print("\n[9/11] Calculando estatísticas (weather + water)...")
+        analytics_service = AnalyticsService()
         weather_statistics = analytics_service.calculate(weather_only)
         print(f"✓ Estatísticas meteorológicas calculadas para {len(weather_statistics)} parâmetro(s)")
 
         # ====================================================================
-        # ETAPA 11: ANALYTICS DE ÁGUA
+        # ETAPA 10: ANALYTICS DE ÁGUA
         # ====================================================================
 
         water_statistics = analytics_service.calculate(water_only)

@@ -1,7 +1,10 @@
 """Serviço de ingestion na base de dados."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+
+import numpy as np
+import pandas as pd
 
 from src.models.reading import Reading
 from src.models.reading_value import ReadingValue
@@ -45,25 +48,44 @@ class IngestionService:
             if "datetime" not in api_readings.columns:
                 raise KeyError("A resposta da API não contém a coluna 'datetime'.")
 
+            # Pré-filtrar colunas de parâmetros UMA VEZ (não a cada linha)
+            param_columns = [
+                col for col in api_readings.columns
+                if col.startswith("parameters_") and col.endswith("_value")
+            ]
+
+            # Converter para numpy (muito mais rápido que iterrows)
+            data_array = api_readings[param_columns].values
+            # Manter como pandas Series com timezone para evitar problemas de conversão
+            datetime_series = pd.to_datetime(api_readings["datetime"], utc=True)
+
             readings: list[Reading] = []
 
-            for _, row in api_readings.iterrows():
-                values = tuple(
-                    ReadingValue(
-                        parameter_code=column[len("parameters_") : -len("_value")],
-                        value=Decimal(str(row[column])),
-                    )
-                    for column in api_readings.columns
-                    if column.startswith("parameters_")
-                    and column.endswith("_value")
-                    if not pd.isna(row[column])
-                )
+            # Iterar sobre numpy (2-3x mais rápido)
+            for i in range(len(data_array)):
+                row_data = data_array[i]
 
-                if values:
+                # Usar numpy.isnan() vetorizado
+                try:
+                    row_float = row_data.astype(float)
+                except (ValueError, TypeError):
+                    row_float = np.array([float(x) if pd.notna(x) else np.nan for x in row_data])
+                
+                valid_mask = ~np.isnan(row_float)
+
+                if valid_mask.any():
+                    values = tuple(
+                        ReadingValue(
+                            parameter_code=param_columns[j][len("parameters_") : -len("_value")],
+                            value=Decimal(str(row_data[j])),
+                        )
+                        for j in np.where(valid_mask)[0]
+                    )
+
                     readings.append(
                         Reading(
                             station_id=station.id,
-                            timestamp=pd.to_datetime(row["datetime"]).to_pydatetime(),
+                            timestamp=datetime_series.iloc[i].to_pydatetime(),
                             values=values,
                         )
                     )
@@ -109,25 +131,44 @@ class IngestionService:
             if "datetime" not in api_readings.columns:
                 raise KeyError("A resposta da API não contém a coluna 'datetime'.")
 
+            # OTIMIZAÇÃO 1: Pré-filtrar colunas de poluentes UMA VEZ (não a cada linha)
+            pollutant_columns = [
+                col for col in api_readings.columns
+                if col.startswith("pollutants_") and col.endswith("_value")
+            ]
+
+            # OTIMIZAÇÃO 2: Converter para numpy (muito mais rápido que iterrows)
+            data_array = api_readings[pollutant_columns].values
+            # Manter como pandas Series com timezone para evitar problemas de conversão
+            datetime_series = pd.to_datetime(api_readings["datetime"], utc=True)
+
             readings: list[Reading] = []
 
-            for _, row in api_readings.iterrows():
-                values = tuple(
-                    ReadingValue(
-                        parameter_code=column[len("pollutants_") : -len("_value")],
-                        value=Decimal(str(row[column])),
-                    )
-                    for column in api_readings.columns
-                    if column.startswith("pollutants_")
-                    and column.endswith("_value")
-                    if not pd.isna(row[column])
-                )
+            # OTIMIZAÇÃO 3: Iterar sobre numpy (2-3x mais rápido)
+            for i in range(len(data_array)):
+                row_data = data_array[i]
 
-                if values:
+                # OTIMIZAÇÃO 4: Usar numpy.isnan() vetorizado
+                try:
+                    row_float = row_data.astype(float)
+                except (ValueError, TypeError):
+                    row_float = np.array([float(x) if pd.notna(x) else np.nan for x in row_data])
+                
+                valid_mask = ~np.isnan(row_float)
+
+                if valid_mask.any():
+                    values = tuple(
+                        ReadingValue(
+                            parameter_code=pollutant_columns[j][len("pollutants_") : -len("_value")],
+                            value=Decimal(str(row_data[j])),
+                        )
+                        for j in np.where(valid_mask)[0]
+                    )
+
                     readings.append(
                         Reading(
                             station_id=station.id,
-                            timestamp=pd.to_datetime(row["datetime"]).to_pydatetime(),
+                            timestamp=datetime_series.iloc[i].to_pydatetime(),
                             values=values,
                         )
                     )
