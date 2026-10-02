@@ -209,15 +209,13 @@ INSERT INTO dbo.Stations
 )
 VALUES
 
--- Reino Unido
-('UK_LONDON_515074_01278', 'Estação Londres', 51.5074, -0.1278),
-('UK_BIRMINGHAM_524861_01898', 'Estação Birmingham', 52.4861, -1.8904),
-('UK_BRIGHTON_508227_01558', 'Estação Brighton', 50.8225, -0.1558),
-
 -- França
 ('FR_PARIS_488566_23522', 'Estação Paris', 48.8566, 2.3522),
 ('FR_MARSEILLE_432969_53698', 'Estação Marselha', 43.2965, 5.3698),
-('FR_LYON_457640_48357', 'Estação Lyon', 45.7640, 4.8357);
+('FR_LYON_457640_48357', 'Estação Lyon', 45.7640, 4.8357),
+
+-- Reino Unido
+('UK_LONDON_515074_01278', 'Estação Londres', 51.5074, -0.1278);
 GO
  
  SELECT
