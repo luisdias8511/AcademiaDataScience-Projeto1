@@ -1,5 +1,32 @@
 /*
 ========================================================
+APAGAR TABELAS EXISTENTES
+========================================================
+*/
+USE EnvironmentalMonitoring;
+GO
+
+IF OBJECT_ID('dbo.ReadingValues', 'U') IS NOT NULL
+    DROP TABLE dbo.ReadingValues;
+GO
+
+IF OBJECT_ID('dbo.Readings', 'U') IS NOT NULL
+    DROP TABLE dbo.Readings;
+GO
+
+IF OBJECT_ID('dbo.Parameters', 'U') IS NOT NULL
+    DROP TABLE dbo.Parameters;
+GO
+
+IF OBJECT_ID('dbo.Stations', 'U') IS NOT NULL
+    DROP TABLE dbo.Stations;
+GO
+
+IF OBJECT_ID('dbo.ParameterCategories', 'U') IS NOT NULL
+    DROP TABLE dbo.ParameterCategories;
+GO
+/*
+========================================================
 STATIONS TABLE
 ========================================================
 */
@@ -35,20 +62,52 @@ CREATE TABLE dbo.Readings
 GO
 /*
 ========================================================
+PARAMETER CATEGORIES
+========================================================
+*/
+
+CREATE TABLE dbo.ParameterCategories
+(
+    Id INT IDENTITY(1,1) NOT NULL,
+    Code VARCHAR(50) NOT NULL,
+    Name VARCHAR(150) NOT NULL,
+
+    CONSTRAINT PK_ParameterCategories
+        PRIMARY KEY (Id),
+
+    CONSTRAINT UQ_ParameterCategories_Code
+        UNIQUE (Code)
+);
+GO
+/*
+========================================================
 PARAMETERS TABLE
 ========================================================
 */
 CREATE TABLE dbo.Parameters
 (
     Id INT IDENTITY(1,1) NOT NULL,
-    Code VARCHAR(50) NOT NULL,
-    Name VARCHAR(150) NOT NULL,
-    Unit VARCHAR(20) NULL,
 
-    CONSTRAINT PK_Parameters PRIMARY KEY (Id),
-    CONSTRAINT UQ_Parameters_Code UNIQUE (Code)
+    Code VARCHAR(100) NOT NULL,
+    CodeApi VARCHAR(100) NOT NULL,
+
+    Name VARCHAR(150) NOT NULL,
+    Unit VARCHAR(30) NULL,
+
+    CategoryId INT NOT NULL,
+
+    CONSTRAINT PK_Parameters
+        PRIMARY KEY (Id),
+
+    CONSTRAINT UQ_Parameters_Code
+        UNIQUE (Code),
+
+    CONSTRAINT FK_Parameters_ParameterCategories
+        FOREIGN KEY (CategoryId)
+        REFERENCES dbo.ParameterCategories(Id)
 );
 GO
+
 /*
 ========================================================
 READING VALUES TABLE

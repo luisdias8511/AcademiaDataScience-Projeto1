@@ -1,9 +1,16 @@
+# Ignore arquivo .env
+#.env
+
 # Ignore criptografia da environment
 .env.cryptography
 
 # Ignore logs
 /logs
 *.log
+
+# Ignore resultados/exportações
+/results
+*.csv
 
 # Ignore virtual environment directories
 venv/
@@ -20,4 +27,13 @@ __pycache__/
 
 # (Optional) Jython bytecode
 *$py.class
-*$py.class
+
+# Ignore test coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Ignore temporary test output files
+check_output.txt
+*.tmp
