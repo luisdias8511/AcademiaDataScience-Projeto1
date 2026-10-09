@@ -47,6 +47,8 @@ class ReadingRepository:
             # Obter variáveis de ambiente
             server = os.getenv("SQL_SERVER")
             database = os.getenv("SQL_DATABASE")
+            username = os.getenv("SQL_USERNAME")
+            password = os.getenv("SQL_PASSWORD")   
             
             if not all([server, database]):
                 raise ValueError(
@@ -55,16 +57,29 @@ class ReadingRepository:
                     "  SQL_DATABASE (ex: EnvironmentalMonitoring)\n"
                     "\nConfigure no arquivo .env ou nas variáveis de ambiente do sistema."
                 )
-            
-            # Construir string de conexão com Windows Authentication
-            self.connection_string = (
-                f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-                f"SERVER={server};"
-                f"DATABASE={database};"
-                "Trusted_Connection=yes;"
-                "TrustServerCertificate=yes;"
-            )
-        
+            else:
+                if not all([username, password]):          
+                    # Construir string de conexão com Windows Authentication
+                    self.connection_string = (
+                        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+                        f"SERVER={server};"
+                        f"DATABASE={database};"
+                        "Trusted_Connection=yes;"
+                        "TrustServerCertificate=yes;"
+                    )
+                else:
+                    # Construir string de conexão com SQL Server Authentication
+                    self.connection_string = (
+                        "DRIVER={ODBC Driver 18 for SQL Server};"
+                        f"SERVER={server};"
+                        f"DATABASE={database};"
+                        f"UID={username};"
+                        f"PWD={password};"
+                        "Encrypt=yes;"
+                        "TrustServerCertificate=no;"
+                        "Connection Timeout=30;"
+                    )  
+                        
         self.conn = None
 
     def _connect(self):
