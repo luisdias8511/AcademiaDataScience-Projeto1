@@ -1,5 +1,5 @@
 # Ignore arquivo .env
-.env
+# .env
 
 # Ignore logs
 /logs
