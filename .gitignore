@@ -1,39 +1,10 @@
-# Ignore arquivo .env
-#.env
+# Ignore arquivos do sistema operacional
+.DS_Store
+Thumbs.db
 
-# Ignore criptografia da environment
-.env.cryptography
+# IgnoreIDEs
+.vscode/
+.idea/
 
-# Ignore logs
-/logs
-*.log
-
-# Ignore resultados/exportações
-/results
-*.csv
-
-# Ignore virtual environment directories
-venv/
-
-# Ignore test files
-src/Sass
-
-.env.cryptography
-# Ignore Python cache directories
-__pycache__/
-
-# Ignore Python bytecode files
-*.py[cod]
-
-# (Optional) Jython bytecode
-*$py.class
-
-# Ignore test coverage artifacts
-.coverage
-.coverage.*
-htmlcov/
-.pytest_cache/
-
-# Ignore temporary test output files
-check_output.txt
+# Ignore Arquivos temporários
 *.tmp
