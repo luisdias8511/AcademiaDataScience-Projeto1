@@ -1,0 +1,24 @@
+# Ignore arquivo .env
+.env
+
+# Ignore logs
+/logs
+*.log
+
+# Ignore Ambiente virtual
+.venv/
+venv/
+
+# Ignore Diretórios de cache do Python
+__pycache__/
+
+# Ignore Arquivos de bytecode do Python
+*.py[cod]
+
+# Ignore Testes
+.pytest_cache/
+
+# Ignore cobertura de teste
+.coverage
+.coverage.*
+htmlcov/
