@@ -10,3 +10,6 @@ Projeto Prático Integrador: Ecossistema de monitoramento ambiental
     - ✅ Armazenamento em SQL Server
     - ✅ Análise estatística com detecção de outliers
     - ✅ Interface web interativa (Streamlit) e CLI
+
+**📋 Environmental Monitoring - API**
+    > EnvironmentalMonitoring.API
