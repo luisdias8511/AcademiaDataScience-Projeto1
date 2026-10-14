@@ -1,25 +1,15 @@
-# Configuração da Função de logging
+# Configuração central de logging do projeto.
+# Os logs são ESTRUTURADOS (uma linha JSON por evento) - a lógica completa está em
+# src/security/logging.py. Os demais módulos continuam usando:
+#     from src.config import logger
 import os
-import logging
 
-# Cria a pasta de logs se não existir
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
+# LOG_DIR é reexportado aqui porque outros pontos do projeto podem precisar da pasta de logs
+from src.security.structured_logging import LOG_DIR, configurar_logger
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - [%(levelname)s] - %(message)s',
+# carrega as variáveis do .env para o ambiente
+from dotenv import load_dotenv
+load_dotenv()
 
-    # Além de gravar no arquivo de log, também exibe no console
-    # handlers=[
-    #             logging.FileHandler(os.path.join(LOG_DIR, "app.log"), encoding='utf-8'),
-    #             logging.StreamHandler()
-    #         ],
-    #         force=True
-
-    # Apenas Grava no arquivo de log, sem exibir no console
-    filename='logs/app.log',   # <-- grava em arquivo
-    filemode='a',              # 'a' = append (não apaga o histórico)
-    encoding='utf-8'
-)
-logger = logging.getLogger('TempH2OLogger')
+# Lê a variável LOG_TO_CONSOLE do .env
+logger = configurar_logger(console=os.getenv("LOG_TO_CONSOLE").lower() == "true")
