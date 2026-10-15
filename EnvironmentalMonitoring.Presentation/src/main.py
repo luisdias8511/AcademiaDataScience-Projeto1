@@ -6,6 +6,7 @@ Escolha de Estação → Período → Ingestion (Weather + Water) → Persistên
 EXECUTAR:
 - Interface Streamlit (padrão):  python -m src.main
 - Interface CLI:                 python -m src.main --cli
+- Interface Streamlit (tela cadastro de usuários):  python -m src.main --register-user
 """
 
 import sys
@@ -226,15 +227,25 @@ def run_streamlit_pipeline():
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(streamlit_app)])
 
 
+def run_user_registration_pipeline():
+    """Executa a tela Streamlit de cadastro de usuários."""
+    from pathlib import Path
+
+    user_app = Path(__file__).parent / "presentation" / "user_registration_app.py"
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(user_app)])
+
+
 # ============================================================================
 # FUNÇÃO PRINCIPAL
 # ============================================================================
 
 def main():
-    """Função principal que escolhe entre CLI ou Streamlit."""
+    """Função principal que escolhe entre CLI, cadastro de usuários ou Streamlit."""
     # Verificar se usuário solicitou modo CLI
     if "--cli" in sys.argv:
         run_cli_pipeline()
+    elif "--users" in sys.argv:
+        run_user_registration_pipeline()
     else:
         # Por padrão, executar Streamlit
         run_streamlit_pipeline()

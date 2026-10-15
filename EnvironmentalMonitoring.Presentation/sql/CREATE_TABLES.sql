@@ -128,6 +128,27 @@ CREATE TABLE dbo.ReadingValues
 GO
 /*
 ========================================================
+USERS TABLE
+========================================================
+*/
+CREATE TABLE dbo.Users
+(
+    Id INT IDENTITY(1,1) NOT NULL,
+    Username VARCHAR(100) NOT NULL,
+    PasswordHash VARCHAR(256) NOT NULL,
+    Email VARCHAR(150) NOT NULL,
+    Cpf VARCHAR(14) NOT NULL,
+    Phone VARCHAR(20) NULL,
+    Atribution VARCHAR(100) NOT NULL,
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT PK_Users PRIMARY KEY (Id),
+    CONSTRAINT UQ_Users_Username UNIQUE (Username),
+    CONSTRAINT UQ_Users_Email UNIQUE (Email),
+    CONSTRAINT UQ_Users_Cpf UNIQUE (Cpf)
+);
+GO
+/*  
+========================================================
 INDICES
 ========================================================
 */
