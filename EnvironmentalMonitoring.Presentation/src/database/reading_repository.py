@@ -504,3 +504,27 @@ class ReadingRepository:
             return codes
         except Exception as e:
             raise Exception(f"Erro ao buscar códigos de parâmetros: {e}")
+
+    def get_parameters_by_CategoryCode(self, category_code: str) -> list[Parameter]:
+        """Busca os parâmetros de uma categoria pelo código da categoria."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Id, Code, CodeApi, Name, Unit, CategoryId FROM Parameters "
+                "WHERE CategoryId = (SELECT Id FROM dbo.ParameterCategories WHERE Code = ?) "
+                "ORDER BY Code",
+                category_code,
+            )
+            rows = cursor.fetchall()
+            self._disconnect()
+
+            return [
+                Parameter(
+                    id=row[0], code=row[1], code_api=row[2],
+                    name=row[3], unit=row[4], category_id=row[5],
+                )
+                for row in rows
+            ]
+        except Exception as e:
+            raise Exception(f"Erro ao buscar parâmetros da categoria: {e}")
