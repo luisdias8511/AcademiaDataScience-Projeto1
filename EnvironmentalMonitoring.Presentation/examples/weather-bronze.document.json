@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "contract_version": "1.0",
+    "source": {
+      "type": "api",
+      "provider": "meersens"
+    },
+    "ingestion_datetime": "2026-10-16T15:00:00Z",
+    "station": {
+      "code": "FR_PARIS_488566_23522",
+      "name": "Estação Paris",
+      "latitude": 48.8566,
+      "longitude": 2.3522
+    }
+  },
+  "payload": {
+    "datetime": "2026-10-12T17:00:00.000Z",
+    "parameters": [
+      {
+        "parameter_code": "AIR_TEMPERATURE",
+        "source_code": "temperature",
+        "name": "Temperature",
+        "value": 16.74,
+        "unit": "°C"
+      }
+    ]
+  }
+}
