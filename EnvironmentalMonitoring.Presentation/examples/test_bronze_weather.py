@@ -4,11 +4,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.ingestion.bronze_weather_transformer import build_bronze_documents_weather
 from src.database.reading_repository import ReadingRepository
+from src.database.blob_storage_service import BlobStorageService
 
 # Inicializa o repositório conexao com o banco de dados
 repository = ReadingRepository()
 # Obtem os parâmetros permitidos para parâmetros de clima
 allowed_parameters = repository.get_parameters_by_CategoryCode("WEATHER")
+
+# Inicializa o serviço de armazenamento de blobs
+blob_service = BlobStorageService("weather")
 
 # JSON de EXEMPLO retornado pela API Meersens para parâmetros de clima
 # TEM QUE ESTAR ENTRE ASPAS TRIPLAS (''' ''')
@@ -1054,6 +1058,15 @@ metadata = {
 }
 
 # Chamada para método de Construção dos documentos bronze para parâmetros de clima
-document = build_bronze_documents_weather(meersens_json, metadata, allowed_parameters)
-# Impressão do documento bronze construído usando dump JSON para melhor visualização na tela
-print(json.dumps(document, indent=2, ensure_ascii=False))
+documents = build_bronze_documents_weather(meersens_json, metadata, allowed_parameters)
+
+# Impressão e armazenamento dos documentos bronze construídos usando dump JSON para melhor visualização na tela
+for blob_name, document in documents:
+    print(f"Blob name: {blob_name}")
+    print(f"Document:")
+    print(json.dumps(document, indent=2, ensure_ascii=False))
+
+    # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
+    # if blob_service.blob_exists(blob_name): 
+    #     print(f"Blob já existe: {blob_name}")  #TODO: Gerar log de backfill
+    # blob_service.upload_json(blob_name, document)

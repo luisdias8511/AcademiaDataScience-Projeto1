@@ -1,7 +1,7 @@
 import json
 
 from src.models.parameter import Parameter
-
+from .blob_paths import BlobPaths
 
 def build_bronze_document_weather(
     orinal_reading_json: dict,
@@ -38,13 +38,14 @@ def build_bronze_documents_weather(
     original_page_json: str,
     metadata: dict,
     allowed_parameters: list[Parameter]
-) -> list[dict]:
+) -> list[tuple[str, dict]]:
     response = json.loads(original_page_json)
     documents = []
 
     for value in response["values"]:
         document = build_bronze_document_weather(value, metadata, allowed_parameters)
         if document is not None:
-            documents.append(document)
+            blob_name = BlobPaths.build_blob_reading_name(metadata["station"]["code"], value["datetime"])
+            documents.append((blob_name, document))
 
     return documents
