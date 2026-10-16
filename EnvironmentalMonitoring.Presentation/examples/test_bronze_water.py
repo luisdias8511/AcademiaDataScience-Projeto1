@@ -5,6 +5,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.ingestion.bronze_water_transformer import build_bronze_documents_water
 from src.database.reading_repository import ReadingRepository
 from src.database.blob_storage_service import BlobStorageService
+from src.ingestion.weather_parser import WeatherParser
 
 # Inicializa o repositório conexao com o banco de dados
 repository = ReadingRepository()
@@ -4226,14 +4227,16 @@ metadata = {
 }
 
 # Chamada para método de Construção dos documentos bronze para parâmetros de água
-documents = build_bronze_documents_water(meersens_json, metadata, allowed_parameters)
+readings, documents = build_bronze_documents_water(meersens_json, metadata, 1, allowed_parameters)
+for reading in readings:
+    print(reading)
 
 # Impressão e armazenamento dos documentos bronze construídos usando dump JSON para melhor visualização na tela
-for blob_name, document in documents:
-    print(f"Blob name: {blob_name}")
-    print(f"Document:")
-    print(json.dumps(document, indent=2, ensure_ascii=False))
-    
+# for blob_name, document in documents:
+#     print(f"Blob name: {blob_name}")
+#     print(f"Document:")
+#     print(json.dumps(document, indent=2, ensure_ascii=False))
+
     # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
     # if blob_service.blob_exists(blob_name): 
     #     print(f"Blob já existe: {blob_name}")  #TODO: Gerar log de backfill
