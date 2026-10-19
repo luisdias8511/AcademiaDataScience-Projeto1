@@ -7,6 +7,8 @@ EXECUTAR:
 - Interface Streamlit (padrão):  python -m src.main
 - Interface CLI:                 python -m src.main --cli
 - Interface Streamlit (tela cadastro de usuários):  python -m src.main --register-user
+- Interface Streamlit (tela exibição de usuários):  python -m src.main --viewer-user
+
 """
 
 import sys
@@ -205,6 +207,30 @@ def run_cli_pipeline():
 
 
 # ============================================================================
+# PIPELINE DE CADASTRO DE USUÁRIOS
+# ============================================================================
+
+def run_register_user_registration_pipeline():
+    """Executa a tela Streamlit de cadastro de usuários."""
+    from pathlib import Path
+
+    register_user_app = Path(__file__).parent / "presentation" / "user_registration_app.py"
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(register_user_app)])
+
+
+# ============================================================================
+# PIPELINE DE EXIBIÇÃO DE USUÁRIOS
+# ============================================================================
+
+def run_viewer_user_registration_pipeline():
+    """Executa a tela Streamlit de exibição de usuários."""
+    from pathlib import Path
+
+    display_user_app = Path(__file__).parent / "presentation" / "user_data_viewer_app.py"
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(display_user_app)])
+
+
+# ============================================================================
 # PIPELINE STREAMLIT
 # ============================================================================
 
@@ -227,13 +253,6 @@ def run_streamlit_pipeline():
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(streamlit_app)])
 
 
-def run_user_registration_pipeline():
-    """Executa a tela Streamlit de cadastro de usuários."""
-    from pathlib import Path
-
-    user_app = Path(__file__).parent / "presentation" / "user_registration_app.py"
-    subprocess.run([sys.executable, "-m", "streamlit", "run", str(user_app)])
-
 
 # ============================================================================
 # FUNÇÃO PRINCIPAL
@@ -244,8 +263,10 @@ def main():
     # Verificar se usuário solicitou modo CLI
     if "--cli" in sys.argv:
         run_cli_pipeline()
-    elif "--users" in sys.argv:
-        run_user_registration_pipeline()
+    elif "--register-user" in sys.argv:
+        run_register_user_registration_pipeline()
+    elif "--viewer-user" in sys.argv:
+        run_viewer_user_registration_pipeline()
     else:
         # Por padrão, executar Streamlit
         run_streamlit_pipeline()

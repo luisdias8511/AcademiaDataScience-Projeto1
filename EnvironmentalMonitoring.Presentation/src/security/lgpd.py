@@ -3,7 +3,6 @@ REGRAS DE LGPD PARA O CADASTRO DE TÉCNICOS E OPERADORES DE CAMPO (requisito 3.2
 ======================================================================================
 Este módulo junta as duas técnicas (hash e criptografia) e define QUAL tratamento
 cada campo pessoal recebe antes de ser gravado na camada Silver / tabela Operadores.
-
 Política adotada:
 | Campo          | Tratamento                         | Por quê?                                        |
 |----------------|------------------------------------|-------------------------------------------------|
@@ -12,9 +11,9 @@ Política adotada:
 | nome_completo  | Hash SHA-256 + Criptografia        | Hash para cruzar/deduplicar; criptografia para  |
 |                |                                    | exibir o nome a pessoas autorizadas.            |
 | email/telefone | Criptografia (reversível)          | Precisam ser recuperados para contato futuro.   |
-
+| password       | Hash PBKDF2-SHA256 (irreversível)  | Senha nunca é lida de volta, só conferida.      |
+|                | (somente cadastro de usuários)     |                                                 |
 Os campos originais (em texto aberto) são REMOVIDOS do registro protegido.
-
 Exemplo:
   Entrada: {"id_operador": 1, "cpf": "123.456.789-09", "nome_completo": "Maria Souza",
             "email": "maria@empresa.com", "funcao": "Técnica"}
@@ -23,13 +22,11 @@ Exemplo:
             "email_cripto": "gAAAA..."}
 """
 from typing import Any, Dict, Iterable, List  # tipos usados nas assinaturas das funções
-
 import pandas as pd  # usado para processar o cadastro em formato de tabela (DataFrame)
-
 from src.config import logger                                      # logger estruturado (JSON)
 from src.security.crypto import criptografar, descriptografar       # criptografia reversível
 from src.security.hashing import anonimizar_cpf, anonimizar_nome   # hash irreversível
-
+from src.security.password_hashing import gerar_hash_senha          # hash de senha (PBKDF2)
 # ---------------------------------------------------------------------------
 # 1) DEFINIÇÃO DA POLÍTICA (para incluir um novo campo sensível, basta editá-la aqui)
 # ---------------------------------------------------------------------------
@@ -37,48 +34,43 @@ from src.security.hashing import anonimizar_cpf, anonimizar_nome   # hash irreve
 CAMPOS_HASH = {"cpf": anonimizar_cpf, "nome_completo": anonimizar_nome}
 # Campos que recebem CRIPTOGRAFIA reversível
 CAMPOS_CRIPTOGRAFADOS = ("nome_completo", "email", "telefone")
-# União (|) dos dois conjuntos: todos os campos que NÃO podem seguir em texto aberto
-CAMPOS_SENSIVEIS = set(CAMPOS_HASH) | set(CAMPOS_CRIPTOGRAFADOS)
-
-
+# Campo de senha (somente no cadastro de usuários) - recebe hash PBKDF2 próprio para senhas
+CAMPO_SENHA = "password"
+# União (|) dos conjuntos: todos os campos que NÃO podem seguir em texto aberto
+CAMPOS_SENSIVEIS = set(CAMPOS_HASH) | set(CAMPOS_CRIPTOGRAFADOS) | {CAMPO_SENHA}
 # ---------------------------------------------------------------------------
 # 2) PROTEÇÃO DE UM ÚNICO OPERADOR
 # ---------------------------------------------------------------------------
 def proteger_operador(registro: Dict[str, Any]) -> Dict[str, Any]:
     """Recebe UM operador (dicionário) e devolve uma CÓPIA com os dados pessoais protegidos.
-
     Lança ValueError se o CPF for inválido.
     """
     # 2.1) Copia apenas os campos NÃO sensíveis (id, função, etc.).
-    #      Assim, CPF, nome, e-mail e telefone em texto aberto ficam de fora.
+    #      Assim, CPF, nome, e-mail, telefone e senha em texto aberto ficam de fora.
     protegido = {k: v for k, v in registro.items() if k not in CAMPOS_SENSIVEIS}
-
     # 2.2) Para cada campo da política de hash, cria a coluna "<campo>_hash"
     #      Ex.: "cpf" -> "cpf_hash" = anonimizar_cpf(valor_do_cpf)
     for campo, funcao in CAMPOS_HASH.items():
         if campo in registro:
             protegido[f"{campo}_hash"] = funcao(registro[campo])
-
     # 2.3) Para cada campo da política de criptografia, cria a coluna "<campo>_cripto"
     #      Ex.: "email" -> "email_cripto" = criptografar(valor_do_email)
     for campo in CAMPOS_CRIPTOGRAFADOS:
         if campo in registro:
             protegido[f"{campo}_cripto"] = criptografar(registro[campo])
-
+    # 2.4) Senha (quando existir no registro): hash PBKDF2 com salt aleatório
+    if CAMPO_SENHA in registro:
+        protegido["password_hash"] = gerar_hash_senha(registro[CAMPO_SENHA])
     return protegido
-
-
 # ---------------------------------------------------------------------------
 # 3) PROTEÇÃO DE VÁRIOS OPERADORES (com auditoria dos rejeitados)
 # ---------------------------------------------------------------------------
 def proteger_operadores(registros: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Protege uma lista de operadores.
-
     Registros com CPF inválido são REJEITADOS (não seguem no pipeline) e registrados
     no log de auditoria, como exige o PDF.
     """
     protegidos, rejeitados = [], 0  # lista de aprovados e contador de rejeitados
-
     # enumerate() devolve a posição (indice) e o conteúdo (registro) de cada item
     for indice, registro in enumerate(registros):
         try:
@@ -91,15 +83,12 @@ def proteger_operadores(registros: Iterable[Dict[str, Any]]) -> List[Dict[str, A
                 "Operador rejeitado na anonimização",
                 extra={"indice": indice, "motivo": str(erro), "operador_id": registro.get("id_operador")},
             )
-
     # Resumo final no log (evidência para o "Relatório de Qualidade" do projeto)
     logger.info(
         "Anonimização LGPD de operadores concluída",
         extra={"total_protegidos": len(protegidos), "total_rejeitados": rejeitados},
     )
     return protegidos
-
-
 # ---------------------------------------------------------------------------
 # 4) VERSÃO PARA DATAFRAME (pandas) - usada na camada Silver
 # ---------------------------------------------------------------------------
@@ -109,23 +98,67 @@ def proteger_operadores_df(df: pd.DataFrame) -> pd.DataFrame:
     # 2) proteger_operadores(...)      -> aplica a política LGPD linha a linha
     # 3) pd.DataFrame(...)             -> monta a tabela novamente (pronta para salvar em Parquet)
     return pd.DataFrame(proteger_operadores(df.to_dict(orient="records")))
-
-
 # ---------------------------------------------------------------------------
 # 5) RECUPERAÇÃO DOS DADOS REVERSÍVEIS (somente processos autorizados)
 # ---------------------------------------------------------------------------
 def recuperar_contato(registro_protegido: Dict[str, Any]) -> Dict[str, Any]:
     """Descriptografa nome, e-mail e telefone de um operador já protegido.
-
     O CPF NÃO aparece aqui porque foi transformado em hash (irreversível).
     """
     # Rastreabilidade (LGPD): todo acesso a dado pessoal fica registrado no log
     logger.info("Acesso a dados pessoais criptografados", extra={"operador_id": registro_protegido.get("id_operador")})
-
     # Para cada campo criptografado existente, descriptografa a coluna "<campo>_cripto"
     # Resultado ex.: {"nome_completo": "Maria Souza", "email": "maria@empresa.com", ...}
     return {
         campo: descriptografar(registro_protegido.get(f"{campo}_cripto"))
+        for campo in CAMPOS_CRIPTOGRAFADOS
+        if f"{campo}_cripto" in registro_protegido
+    }
+# ---------------------------------------------------------------------------
+# 6) CADASTRO DE USUÁRIOS (tela user_registration_app.py -> tabela Users)
+# ---------------------------------------------------------------------------
+# Este mapa traduz os campos para que a MESMA política seja aplicada aos usuários.
+MAPA_CAMPOS_USUARIO = {
+    "full_name": "nome_completo",
+    "phone": "telefone",
+    # "cpf", "email" e "password" já têm o mesmo nome nos dois lados
+}
+
+
+def proteger_usuario(usuario: Dict[str, Any]) -> Dict[str, Any]:
+    """Aplica a política LGPD aos dados digitados na tela de cadastro.
+
+    Entrada (texto aberto): {"username", "full_name", "password", "email", "cpf", "phone", "atribution"}
+    Saída (pronta p/ banco): {"username", "atribution", "password_hash", "cpf_hash",
+                              "nome_completo_hash", "nome_completo_cripto",
+                              "email_cripto", "telefone_cripto"}
+    Lança ValueError se o CPF for inválido.
+    """
+    # 1) Traduz os nomes dos campos (full_name -> nome_completo, phone -> telefone)
+    registro = {MAPA_CAMPOS_USUARIO.get(k, k): v for k, v in usuario.items()}
+    # 2) Reaproveita exatamente a mesma regra dos operadores (hash + criptografia + senha)
+    protegido = proteger_operador(registro)
+    # 3) Auditoria SEM dado pessoal: apenas o login e quais colunas foram geradas
+    logger.info(
+        "Dados de usuário protegidos (LGPD)",
+        extra={"username": usuario.get("username"), "colunas": sorted(protegido)},
+    )
+    return protegido
+
+
+def recuperar_usuario(registro_protegido: Dict[str, Any]) -> Dict[str, Any]:
+    """Descriptografa os campos reversíveis de um usuário gravado na tabela Users.
+
+    Retorna as chaves no padrão da tela: {"full_name", "email", "phone"}.
+    CPF e senha NÃO são retornados: foram gravados como hash (irreversível).
+    Lança InvalidToken se a FERNET_KEY estiver errada ou o dado tiver sido adulterado.
+    """
+    # Rastreabilidade (LGPD): todo acesso a dado pessoal fica registrado no log
+    logger.info("Acesso a dados pessoais criptografados de usuário",
+                extra={"usuario_id": registro_protegido.get("id_usuario")})
+    inverso = {v: k for k, v in MAPA_CAMPOS_USUARIO.items()}  # nome_completo -> full_name
+    return {
+        inverso.get(campo, campo): descriptografar(registro_protegido.get(f"{campo}_cripto"))
         for campo in CAMPOS_CRIPTOGRAFADOS
         if f"{campo}_cripto" in registro_protegido
     }
