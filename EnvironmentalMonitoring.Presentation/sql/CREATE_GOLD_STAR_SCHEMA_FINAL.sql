@@ -36,7 +36,9 @@ CREATE TABLE gold.DimStation
     StationName  VARCHAR(200) NOT NULL,
     Latitude     DECIMAL(10,6) NOT NULL,
     Longitude    DECIMAL(10,6) NOT NULL,
-
+    Municipality VARCHAR(100) NOT NULL,
+    State VARCHAR(50) NOT NULL,
+    Country VARCHAR(100) NOT NULL,    
     CONSTRAINT PK_DimStation PRIMARY KEY CLUSTERED (StationKey),
     CONSTRAINT UQ_DimStation_StationId UNIQUE (StationId),
     CONSTRAINT UQ_DimStation_StationCode UNIQUE (StationCode)
