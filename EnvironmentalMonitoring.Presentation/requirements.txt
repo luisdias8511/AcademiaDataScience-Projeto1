@@ -6,3 +6,4 @@ python-dotenv==1.2.3
 requests==2.34.2
 streamlit==1.40.1
 azure-storage-blob==12.27.0
+jsonschema[format]==4.26.0
