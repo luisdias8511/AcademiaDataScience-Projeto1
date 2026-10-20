@@ -49,6 +49,6 @@ for meersens_json in meersens_json_list:
         print(f"Document:")
         print(json.dumps(item["document"], indent=2, ensure_ascii=False, default=str))
         # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
-        if blob_service.blob_exists(item['blob_name']): 
-            print(f"Blob já existe: {item['blob_name']}")  #TODO: Gerar log de backfill
-        blob_service.upload_json(item['blob_name'], item["document"])
+        # if blob_service.blob_exists(item['blob_name']): 
+        #     print(f"Blob já existe: {item['blob_name']}")  #TODO: Gerar log de backfill
+        # blob_service.upload_json(item['blob_name'], item["document"])
