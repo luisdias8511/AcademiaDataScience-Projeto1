@@ -149,7 +149,8 @@ CREATE TABLE dbo.Readings
 
     CONSTRAINT PK_Readings PRIMARY KEY (Id),
     CONSTRAINT FK_Readings_Stations FOREIGN KEY (StationId) REFERENCES dbo.Stations(Id),
-    CONSTRAINT FK_Readings_Operators FOREIGN KEY (OperatorId) REFERENCES dbo.Operators(Id)
+    CONSTRAINT FK_Readings_Operators FOREIGN KEY (OperatorId) REFERENCES dbo.Operators(Id),
+    CONSTRAINT UQ_Readings_Station_DateTime UNIQUE (StationId, DateTime)
 );
 GO
 /*
