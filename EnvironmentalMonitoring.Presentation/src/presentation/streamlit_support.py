@@ -13,7 +13,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import streamlit as st
 
 from src.database.reading_repository import ReadingRepository
-from src.services.api_weather_service import IngestionService
 from src.analytics.service import AnalyticsService
 from src.models.statistics_result import StatisticsResult
 from src.reporting import (
@@ -21,7 +20,6 @@ from src.reporting import (
     export_statistics_with_outliers_detail,
 )
 from src.security.log_utils import tratar_erro
-import json
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.database.blob_storage_service import BlobStorageService
@@ -306,7 +304,7 @@ def parser_readings(
 def persist_readings_bronze(
     documents_weather: list[dict],
     documents_water: list[dict],
-) -> tuple[int, int]:
+) -> tuple[tuple[int, int], tuple[int, int]]:
     """Persiste leituras no blob storage bronze.
     
     Args:
@@ -314,34 +312,39 @@ def persist_readings_bronze(
         documents_water: Leituras de qualidade da água.
     
     Returns:
-        tuple: (weather_count, water_count) de registros persistidos.
+        tuple: ((weather_inserted, weather_updated), (water_inserted, water_updated)).
     """
     blob_service_weather = BlobStorageService(SERVICES["weather"]["blob_container"])
     blob_service_water = BlobStorageService(SERVICES["water"]["blob_container"])
-    weather_count = 0
-    water_count = 0
+    weather_inserted = 0
+    weather_updated = 0
+    water_inserted = 0
+    water_updated = 0
 
     for document in documents_weather:        
         # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
         if blob_service_weather.blob_exists(document['blob_name']): 
-            st.write(f"Blob já existe: {document['blob_name']}")  #TODO: Gerar log de backfill
+            weather_updated += 1 #TODO: Gerar log de backfill
+        else:
+            weather_inserted += 1
         blob_service_weather.upload_json(document['blob_name'], document["document"])
-        weather_count += 1
 
     for document in documents_water:        
         # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
         if blob_service_water.blob_exists(document['blob_name']): 
-            st.write(f"Blob já existe: {document['blob_name']}")  #TODO: Gerar log de backfill
+            water_updated += 1 #TODO: Gerar log de backfill
+        else:
+            water_inserted += 1
         blob_service_water.upload_json(document['blob_name'], document["document"])
-        water_count += 1
-    return weather_count, water_count
+    
+    return (weather_inserted, weather_updated), (water_inserted, water_updated)
 
 
 def persist_readings(
     repository: ReadingRepository,
     weather_readings: list,
     water_readings: list,
-) -> tuple[int, int]:
+) -> tuple[tuple[int, int], tuple[int, int]]:
     """Persiste leituras no banco de dados.
     
     Args:
@@ -350,27 +353,20 @@ def persist_readings(
         water_readings: Leituras de qualidade da água.
     
     Returns:
-        tuple: (weather_count, water_count) de registros persistidos.
+        tuple: ((weather_inseridas, weather_atualizadas), (water_inseridas, water_atualizadas)).
     """
-    weather_count = 0
-    water_count = 0
-    
-    if weather_readings:
-        weather_ids = repository.save_many(
-            weather_readings,
-            parameter_category_code=SERVICES["weather"]["category_code"],
-        )
-        weather_count = len(weather_ids) if weather_ids else 0
+    weather_counts = [0, 0]
+    water_counts = [0, 0]
 
-    
-    if water_readings:
-        water_ids = repository.save_many(
-            water_readings,
-            parameter_category_code=SERVICES["water"]["category_code"],
-        )
-        water_count = len(water_ids) if water_ids else 0
-    
-    return weather_count, water_count
+    for reading in weather_readings:
+        _, updated = repository.save_with_status(reading, SERVICES["weather"]["category_code"])
+        weather_counts[updated] += 1
+
+    for reading in water_readings:
+        _, updated = repository.save_with_status(reading, SERVICES["water"]["category_code"])
+        water_counts[updated] += 1
+
+    return tuple(weather_counts), tuple(water_counts)
 
 
 def load_saved_readings(
@@ -517,25 +513,25 @@ def run_pipeline(
 
         # Etapa 5.2: Persistência bronze (armazenamento em blob)
         progress_bar.progress(59, text="Persistindo dados bronze.")
-        weather_docs_count, water_docs_count = persist_readings_bronze(
+        (weather_inserted, weather_updated), (water_inserted, water_updated) = persist_readings_bronze(
             documents_weather,
             documents_water,
         )
         progress_bar.progress(60, text="Persistência bronze concluída.") 
-        st.write(f"{weather_docs_count} documento(s) meteorológico(s) persistido(s) no bronze.")
-        st.write(f"{water_docs_count} documento(s) de água persistido(s) no bronze.")
+        st.write(f"Meteorologia: {weather_inserted} documento(s) inserido(s) e {weather_updated} atualizado(s) no bronze.")
+        st.write(f"Qualidade da água: {water_inserted} documento(s) inserido(s) e {water_updated} atualizado(s) no bronze.")
 
         # Etapa 5.3: Persistência silver
         progress_bar.progress(60, text="Persistindo dados meteorológicos no silver.")
         progress_bar.progress(70, text="Persistindo dados de qualidade da água no silver.")
         
-        weather_count, water_count = persist_readings(
+        (weather_inserted, weather_updated), (water_inserted, water_updated) = persist_readings(
             repository,
             readings_weather,
             readings_water,
         )
-        st.write(f"{weather_count} leitura(s) meteorológica(s) persistida(s).")
-        st.write(f"{water_count} leitura(s) de água persistida(s).")        
+        st.write(f"Meteorologia: {weather_inserted} leitura(s) inserida(s) e {weather_updated} atualizada(s).")
+        st.write(f"Qualidade da água: {water_inserted} leitura(s) inserida(s) e {water_updated} atualizada(s).")        
         
         # Etapa 6: Recuperar dados
         progress_bar.progress(80, text="Recuperando dados persistidos.")

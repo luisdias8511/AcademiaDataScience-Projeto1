@@ -157,6 +157,11 @@ class ReadingRepository:
 
     def save(self, reading: Reading, parameter_category_code: str) -> int:
         """Persiste uma leitura no banco com transação."""
+        reading_id, _ = self.save_with_status(reading, parameter_category_code)
+        return reading_id
+
+    def save_with_status(self, reading: Reading, parameter_category_code: str) -> tuple[int, bool]:
+        """Persiste uma leitura e informa se ela já existia (atualizada)."""
         try:
             self._connect()
             cursor = self.conn.cursor()
@@ -173,25 +178,58 @@ class ReadingRepository:
                 reading.station_id,
             )
 
-            # Insere na tabela Readings com OUTPUT para obter o ID
             cursor.execute(
-                """
-                INSERT INTO Readings (StationId, DateTime, OperatorId)
-                OUTPUT INSERTED.Id
-                VALUES (?, ?, ?)
-                """,
+                "SELECT Id FROM Readings WHERE StationId = ? AND DateTime = ?",
                 reading.station_id,
                 database_timestamp,
-                reading.operator.id,
             )
-            reading_id = cursor.fetchone()[0]
-            logger.debug(
-                "Leitura %s criada.",
-                reading_id,
-            )
+            existing = cursor.fetchone()
+            updated = existing is not None
+
+            if existing:
+                reading_id = existing[0]
+                # TODO: Gerar log de backfill
+                cursor.execute(
+                    "UPDATE Readings SET OperatorId = ? WHERE Id = ?",
+                    reading.operator.id,
+                    reading_id,
+                )
+
+                logger.debug("Leitura %s atualizada.", reading_id)
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO Readings (StationId, DateTime, OperatorId)
+                    OUTPUT INSERTED.Id
+                    VALUES (?, ?, ?)
+                    """,
+                    reading.station_id,
+                    database_timestamp,
+                    reading.operator.id,
+                )
+                reading_id = cursor.fetchone()[0]
+                logger.debug("Leitura %s criada.", reading_id)
 
             # Insere valores na tabela ReadingValues
             for value in reading.values:
+                cursor.execute(
+                    """
+                    DELETE FROM ReadingValues
+                    WHERE ReadingId = ?
+                    AND ParameterId = (
+                        SELECT Id FROM Parameters
+                        WHERE Code = ?
+                        AND CategoryId = (SELECT Id FROM ParameterCategories WHERE Code = ?)
+                    )
+                    """,
+                    reading_id,
+                    value.parameter_code,
+                    parameter_category_code,
+                )
+                if cursor.rowcount > 0:
+                    # TODO: Gerar log de backfill
+                    logger.debug("Valor do parâmetro %s substituído.", value.parameter_code)
+
                 cursor.execute(
                     """
                     INSERT INTO ReadingValues (ReadingId, ParameterId, Value)
@@ -223,7 +261,7 @@ class ReadingRepository:
                 reading_id,
             )
             self._disconnect()
-            return reading_id
+            return reading_id, updated
 
         except Exception as e:
             if self.conn:
