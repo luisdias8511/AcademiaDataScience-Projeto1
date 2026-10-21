@@ -27,6 +27,7 @@ from src.presentation.streamlit_support import (
 )
 from src.presentation.user_registration_app import show_user_registration_page
 from src.presentation.user_data_viewer_app import show_user_data_viewer_page
+from src.presentation.manual_ingestion_app import show_manual_ingestion_page
 from src.config import logger
 from src.security.log_utils import tratar_erro
 from streamlit_avatar import avatar
@@ -71,13 +72,13 @@ st.session_state.setdefault("decrypted", None)
 
 def page_home():
     """Página inicial com links para os pipelines."""
-    st.markdown("### 🏠 Plataforma de Monitoramento Ambiental e Gestão de Usuários")
+    st.markdown("### Plataforma de Monitoramento Ambiental e Gestão de Usuários")
     st.markdown("Escolha uma opção para começar:")
     st.divider()
     
     # Linha 1: Pipelines Ambientais
     st.markdown("**📊 Pipelines de Dados Ambientais**")
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if st.button("📥 Ingestão de Dados", use_container_width=True, key="btn_ingestion"):
@@ -85,15 +86,25 @@ def page_home():
             st.rerun()
     
     with col2:
+        if st.button("📋 Ingestão Manual", use_container_width=True, key="btn_manual_ingestion"):
+            st.session_state.current_page = "manual_ingestion"
+            st.rerun()
+    
+    with col3:
         if st.button("📈 Analytics e Relatórios", use_container_width=True, key="btn_analytics"):
             st.session_state.current_page = "analytics"
+            st.rerun()
+    
+    with col4:
+        if st.button("📊 Dashboard", use_container_width=True, key="btn_dashboard"):
+            st.session_state.current_page = "dashboard"
             st.rerun()
     
     st.divider()
     
     # Linha 2: Gestão de Usuários
     st.markdown("**👥 Gestão de Usuários**")
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if st.button("👤 Cadastro de Usuários", use_container_width=True, key="btn_user_registration"):
@@ -108,7 +119,7 @@ def page_home():
     st.divider()
     
     # Linha 3: Informações
-    col1, col2 = st.columns(2)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if st.button("ℹ️ Sobre Nós", use_container_width=True, key="btn_about"):
@@ -200,6 +211,25 @@ def page_ingestion():
                     start_date_value,
                     end_date_value,
                 )
+
+
+# ============================================================================
+# FUNÇÃO PÁGINA INGESTÃO MANUAL
+# ============================================================================
+
+def page_manual_ingestion():
+    """Página de ingestão manual de dados."""
+    col1, col2 = st.columns([4, 1])
+    
+    with col1:
+        st.markdown("### 📋 Ingestão Manual via JSON")
+    
+    with col2:
+        if st.button("Voltar", key="btn_back_manual_ingestion"):
+            st.session_state.current_page = "home"
+            st.rerun()
+    
+    show_manual_ingestion_page()
 
 
 # ============================================================================
@@ -422,7 +452,7 @@ def page_user_data_viewer():
 
 def page_about():
     """Página com informações sobre a equipe de desenvolvimento."""
-    col1, col2 = st.columns([4, 1])
+    col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
     
     with col1:
         st.markdown("### ℹ️ Sobre Nós")
@@ -480,6 +510,42 @@ def page_about():
 
 
 # ============================================================================
+# FUNÇÃO PÁGINA DASHBOARD
+# ============================================================================
+
+def page_dashboard():
+    """Página de exibição da arquitetura Gold (Dashboard)."""
+    col1, col2 = st.columns([4, 1])
+    
+    with col1:
+        st.markdown("### 📊 Arquitetura Gold - Dashboard Estrutural")
+    
+    with col2:
+        if st.button("Voltar", key="btn_back_dashboard"):
+            st.session_state.current_page = "home"
+            st.rerun()
+    
+    st.markdown("Visualização da arquitetura de dados do modelo dimensional (Star Schema).")
+    st.divider()
+    
+    try:
+        # Ler arquivo gold_architecture.md
+        gold_arch_path = Path(__file__).parent.parent.parent / "docs" / "gold_architecture.md"
+        
+        if gold_arch_path.exists():
+            with open(gold_arch_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            # Exibir conteúdo em abas para melhor organização
+            st.markdown(content)
+        else:
+            st.error(f"❌ Arquivo não encontrado: {gold_arch_path}")
+    except Exception as e:
+        st.error(f"❌ Erro ao carregar o arquivo: {e}")
+        logger.error(f"Erro ao exibir dashboard: {e}")
+
+
+# ============================================================================
 # FUNÇÃO PRINCIPAL
 # ============================================================================
 
@@ -490,8 +556,12 @@ def main():
         page_home()
     elif st.session_state.current_page == "ingestion":
         page_ingestion()
+    elif st.session_state.current_page == "manual_ingestion":
+        page_manual_ingestion()
     elif st.session_state.current_page == "analytics":
         page_analytics()
+    elif st.session_state.current_page == "dashboard":
+        page_dashboard()
     elif st.session_state.current_page == "user_registration":
         page_user_registration()
     elif st.session_state.current_page == "user_viewer":
