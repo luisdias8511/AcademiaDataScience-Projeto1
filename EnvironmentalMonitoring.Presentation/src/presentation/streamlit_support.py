@@ -21,7 +21,16 @@ from src.reporting import (
     export_statistics_with_outliers_detail,
 )
 from src.security.log_utils import tratar_erro
-
+import json
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.database.blob_storage_service import BlobStorageService
+from src.ingestion.data_parser import DataParser
+from src.ingestion.api_client import APIClient
+from src.constants import SERVICES
+from src.models import Station
+from src.models.reading import Reading
+# Inicializa o serviço de armazenamento de blobs
 
 def load_stations():
     """Carrega lista de estações do repositório.
@@ -172,7 +181,7 @@ def render_download_buttons(
 
 
 def run_ingestion(
-    ingestion_service: IngestionService,
+    api_client: APIClient,
     selected_station,
     start_date: datetime,
     end_date: datetime,
@@ -182,7 +191,7 @@ def run_ingestion(
     """Executa ingestion de weather e water em paralelo.
     
     Args:
-        ingestion_service: Serviço de ingestão.
+        api_client: Cliente da API para ingestão de dados.
         selected_station: Estação selecionada.
         start_date: Data inicial (datetime com UTC).
         end_date: Data final (datetime com UTC).
@@ -192,42 +201,42 @@ def run_ingestion(
     Returns:
         tuple: (weather_readings, water_readings)
     """
-    weather_readings = []
-    water_readings = []
-    
+    weather_readings_json_list = []
+    water_readings_json_list = []
     weather_status.info("Meteorologia: consulta em andamento...")
-    water_status.info("Qualidade da água: consulta em andamento...")
-    
+    water_status.info("Qualidade da água: consulta em andamento...") 
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
             futures = {
                 executor.submit(
-                    ingestion_service.fetch_weather_readings,
+                    api_client.fetch_readings,
                     selected_station,
                     start_date,
                     end_date,
+                    SERVICES["weather"]["api_url_env"],
                 ): "weather",
                 executor.submit(
-                    ingestion_service.get_water_readings,
+                    api_client.fetch_readings,
                     selected_station,
                     start_date,
                     end_date,
+                    SERVICES["water"]["api_url_env"],
                 ): "water",
             }
             
             for future in as_completed(futures):
                 category = futures[future]
-                readings = future.result()
+                readings_json_list = future.result()
                 
                 if category == "weather":
-                    weather_readings = readings
+                    weather_readings_json_list = readings_json_list
                     weather_status.success(
-                        f"Meteorologia: {len(weather_readings)} leitura(s) coletada(s)."
+                        f"Meteorologia: {len(weather_readings_json_list)} leitura(s) coletada(s)."
                     )
                 elif category == "water":
-                    water_readings = readings
+                    water_readings_json_list = readings_json_list
                     water_status.success(
-                        f"Qualidade da água: {len(water_readings)} leitura(s) coletada(s)."
+                        f"Qualidade da água: {len(water_readings_json_list)} leitura(s) coletada(s)."
                     )
     
     except Exception as e:
@@ -235,7 +244,97 @@ def run_ingestion(
         water_status.error("Falha na consulta de qualidade da água.")
         raise
     
-    return weather_readings, water_readings
+    return weather_readings_json_list, water_readings_json_list
+
+def parser_readings(
+    repository: ReadingRepository,
+    dataParser: DataParser,
+    ingestion_datetime: datetime,
+    station_metadata: dict,
+    selected_station: Station,
+    weather_readings_json_list: list[dict],
+    water_readings_json_list: list[dict]
+) -> tuple[list[Reading], list[dict], list[Reading], list[dict]]:
+    """Faz o parsing das leituras meteorológicas e de qualidade da água
+    
+    Args:
+        weather_readings_json_list: Leituras meteorológicas.
+        water_readings_json_list: Leituras de qualidade da água.
+    
+    Returns:
+        tuple: (readings_weather, documents_weather, readings_water, documents_water).
+    """
+    readings_weather, documents_weather = [], []
+    readings_water, documents_water = [], []
+    allowed_parameters_weather = repository.get_parameters_by_CategoryCode(SERVICES["weather"]["category_code"])
+    operator_weather = repository.get_operator_by_service_code(SERVICES["weather"]["operator_code"])
+    if operator_weather is None:
+        raise ValueError("Operador do serviço de meteorologia não encontrado.")
+    for weather_readings_json in weather_readings_json_list:
+        if not weather_readings_json:
+            continue
+        metadata = {
+            "contract_version": "1.0",
+            "source": {"type": "api", "provider": "meersens"},
+            "ingestion_datetime": ingestion_datetime,
+            "station": station_metadata,
+        }
+        readings_weather_temp, documents_weather_temp = dataParser.build_documents_readings(SERVICES["weather"]["specifications_name"], weather_readings_json, metadata, selected_station.id, operator_weather, allowed_parameters_weather)
+        readings_weather.extend(readings_weather_temp)
+        documents_weather.extend(documents_weather_temp)
+
+    allowed_parameters_water = repository.get_parameters_by_CategoryCode(SERVICES["water"]["category_code"])
+    operator_water = repository.get_operator_by_service_code(SERVICES["water"]["operator_code"])
+    if operator_water is None:
+        raise ValueError("Operador do serviço de qualidade da água não encontrado.")
+    for water_readings_json in water_readings_json_list:
+        if not water_readings_json:
+            continue
+        metadata = {
+            "contract_version": "1.0",
+            "source": {"type": "api", "provider": "meersens"},
+            "ingestion_datetime": ingestion_datetime,
+            "station": station_metadata,
+        }
+        readings_water_temp, documents_water_temp = dataParser.build_documents_readings(SERVICES["water"]["specifications_name"], water_readings_json, metadata, selected_station.id, operator_water, allowed_parameters_water)
+        readings_water.extend(readings_water_temp)
+        documents_water.extend(documents_water_temp)
+
+    return readings_weather, documents_weather, readings_water, documents_water
+
+
+def persist_readings_bronze(
+    documents_weather: list[dict],
+    documents_water: list[dict],
+) -> tuple[int, int]:
+    """Persiste leituras no blob storage bronze.
+    
+    Args:
+        documents_weather: Leituras meteorológicas.
+        documents_water: Leituras de qualidade da água.
+    
+    Returns:
+        tuple: (weather_count, water_count) de registros persistidos.
+    """
+    blob_service_weather = BlobStorageService(SERVICES["weather"]["blob_container"])
+    blob_service_water = BlobStorageService(SERVICES["water"]["blob_container"])
+    weather_count = 0
+    water_count = 0
+
+    for document in documents_weather:        
+        # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
+        if blob_service_weather.blob_exists(document['blob_name']): 
+            st.write(f"Blob já existe: {document['blob_name']}")  #TODO: Gerar log de backfill
+        blob_service_weather.upload_json(document['blob_name'], document["document"])
+        weather_count += 1
+
+    for document in documents_water:        
+        # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
+        if blob_service_water.blob_exists(document['blob_name']): 
+            st.write(f"Blob já existe: {document['blob_name']}")  #TODO: Gerar log de backfill
+        blob_service_water.upload_json(document['blob_name'], document["document"])
+        water_count += 1
+    return weather_count, water_count
 
 
 def persist_readings(
@@ -259,18 +358,17 @@ def persist_readings(
     if weather_readings:
         weather_ids = repository.save_many(
             weather_readings,
-            parameter_category_id=1,
+            parameter_category_code=SERVICES["weather"]["category_code"],
         )
         weather_count = len(weather_ids) if weather_ids else 0
-        st.write(f"{weather_count} leitura(s) meteorológica(s) persistida(s).")
+
     
     if water_readings:
         water_ids = repository.save_many(
             water_readings,
-            parameter_category_id=2,
+            parameter_category_code=SERVICES["water"]["category_code"],
         )
         water_count = len(water_ids) if water_ids else 0
-        st.write(f"{water_count} leitura(s) de água persistida(s).")
     
     return weather_count, water_count
 
@@ -359,8 +457,10 @@ def run_pipeline(
         
         # Etapa 3: Preparar ingestão
         progress_bar.progress(15, text="Preparando a ingestão.")
-        ingestion_service = IngestionService()
-        
+        api_client = APIClient()
+        ingestion_datetime = datetime.now(timezone.utc).isoformat()  
+        dataParser = DataParser()
+
         # Converter datas para datetime com UTC
         start_date = datetime.combine(
             start_date_value,
@@ -373,6 +473,13 @@ def run_pipeline(
             tzinfo=timezone.utc,
         )
         
+        station_metadata = {
+            "code": selected_station.code,
+            "name": selected_station.name,
+            "latitude": float(selected_station.latitude),
+            "longitude": float(selected_station.longitude),
+        }
+
         # Etapa 4: Ingestão paralela
         progress_bar.progress(
             20,
@@ -382,8 +489,8 @@ def run_pipeline(
         weather_status = st.empty()
         water_status = st.empty()
         
-        weather_readings, water_readings = run_ingestion(
-            ingestion_service,
+        weather_readings_json_list, water_readings_json_list = run_ingestion(
+            api_client,
             selected_station,
             start_date,
             end_date,
@@ -392,18 +499,43 @@ def run_pipeline(
         )
         
         progress_bar.progress(50, text="Consultas às APIs concluídas.")
+       
+        st.write("Fazendo o parser dos dados....")
         
-        st.write("Persistindo as leituras no SQL Server...")
-        
-        # Etapa 5: Persistência
-        progress_bar.progress(60, text="Persistindo dados meteorológicos.")
-        progress_bar.progress(70, text="Persistindo dados de qualidade da água.")
+        # Etapa 5.1: Parser   
+        progress_bar.progress(55, text="Fazendo o parser dos dados.")
+        readings_weather, documents_weather, readings_water, documents_water = parser_readings(
+                    repository,
+                    dataParser,
+                    ingestion_datetime,
+                    station_metadata,
+                    selected_station,
+                    weather_readings_json_list,
+                    water_readings_json_list,
+                )
+        progress_bar.progress(58, text="Parser dos dados concluído.")
+
+        # Etapa 5.2: Persistência bronze (armazenamento em blob)
+        progress_bar.progress(59, text="Persistindo dados bronze.")
+        weather_docs_count, water_docs_count = persist_readings_bronze(
+            documents_weather,
+            documents_water,
+        )
+        progress_bar.progress(60, text="Persistência bronze concluída.") 
+        st.write(f"{weather_docs_count} documento(s) meteorológico(s) persistido(s) no bronze.")
+        st.write(f"{water_docs_count} documento(s) de água persistido(s) no bronze.")
+
+        # Etapa 5.3: Persistência silver
+        progress_bar.progress(60, text="Persistindo dados meteorológicos no silver.")
+        progress_bar.progress(70, text="Persistindo dados de qualidade da água no silver.")
         
         weather_count, water_count = persist_readings(
             repository,
-            weather_readings,
-            water_readings,
+            readings_weather,
+            readings_water,
         )
+        st.write(f"{weather_count} leitura(s) meteorológica(s) persistida(s).")
+        st.write(f"{water_count} leitura(s) de água persistida(s).")        
         
         # Etapa 6: Recuperar dados
         progress_bar.progress(80, text="Recuperando dados persistidos.")

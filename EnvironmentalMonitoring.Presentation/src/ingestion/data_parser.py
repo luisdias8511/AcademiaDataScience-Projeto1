@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from src.models.parameter import Parameter
 from .blob_paths import BlobPaths
+from src.models.operator import Operator
 from src.models.reading import Reading
 from src.models.reading_value import ReadingValue
 
@@ -55,6 +56,7 @@ class DataParser:
         original_page_json: str | dict,
         metadata: dict,
         station_id: int,
+        operator: Operator,
         allowed_parameters: list[Parameter]
     ) -> tuple[list[Reading], list[dict]]:
         if isinstance(original_page_json, str):
@@ -72,7 +74,7 @@ class DataParser:
             document, reading_values = built
             blob_name = BlobPaths.build_blob_reading_name(metadata["station"]["code"], value["datetime"])
             timestamp = datetime.fromisoformat(value["datetime"])
-            readings.append(Reading(station_id=station_id, timestamp=timestamp, values=tuple(reading_values)))
+            readings.append(Reading(station_id=station_id, timestamp=timestamp, values=tuple(reading_values), operator=operator))
             documents.append({"blob_name": blob_name, "document": document})
 
         return readings, documents

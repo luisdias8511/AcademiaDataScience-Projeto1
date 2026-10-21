@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from src.models.reading_value import ReadingValue
+from src.models.operator import Operator
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +26,7 @@ class Reading:
     station_id: int
     timestamp: datetime
     values: tuple[ReadingValue, ...]
+    operator: Operator
 
     def __post_init__(self) -> None:
         """Valida os invariantes da leitura após inicialização."""
