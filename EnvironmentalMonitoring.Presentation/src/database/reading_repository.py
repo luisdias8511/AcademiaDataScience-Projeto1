@@ -14,6 +14,7 @@ except ImportError:
 from src.models.reading import Reading
 from src.models.station import Station
 from src.models.parameter import Parameter
+from src.models.operator import Operator
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ class ReadingRepository:
             self._connect()
             cursor = self.conn.cursor()
             cursor.execute(
-                "SELECT Id, Code, Name, Latitude, Longitude FROM Stations WHERE Id = ?",
+                "SELECT Id, Code, Name, Latitude, Longitude, Municipality, State, Country FROM Stations WHERE Id = ?",
                 station_id,
             )
             row = cursor.fetchone()
@@ -119,6 +120,9 @@ class ReadingRepository:
                     name=row[2],
                     latitude=Decimal(str(row[3])),
                     longitude=Decimal(str(row[4])),
+                    municipality=row[5],
+                    state=row[6],
+                    country=row[7],
                 )
             return None
         except Exception as e:
@@ -151,7 +155,7 @@ class ReadingRepository:
         except Exception as e:
             raise Exception(f"Erro ao buscar parâmetro: {e}")
 
-    def save(self, reading: Reading, parameter_category_id: int) -> int:
+    def save(self, reading: Reading, parameter_category_code: str) -> int:
         """Persiste uma leitura no banco com transação."""
         try:
             self._connect()
@@ -172,12 +176,13 @@ class ReadingRepository:
             # Insere na tabela Readings com OUTPUT para obter o ID
             cursor.execute(
                 """
-                INSERT INTO Readings (StationId, DateTime)
+                INSERT INTO Readings (StationId, DateTime, OperatorId)
                 OUTPUT INSERTED.Id
-                VALUES (?, ?)
+                VALUES (?, ?, ?)
                 """,
                 reading.station_id,
                 database_timestamp,
+                reading.operator.id,
             )
             reading_id = cursor.fetchone()[0]
             logger.debug(
@@ -187,23 +192,25 @@ class ReadingRepository:
 
             # Insere valores na tabela ReadingValues
             for value in reading.values:
-                param_id = self._get_parameter_id_by_code(cursor, value.parameter_code, parameter_category_id)
-                if not param_id:
+                cursor.execute(
+                    """
+                    INSERT INTO ReadingValues (ReadingId, ParameterId, Value)
+                    SELECT ?, Id, ?
+                    FROM Parameters
+                    WHERE Code = ?
+                    AND CategoryId = (SELECT Id FROM ParameterCategories WHERE Code = ?)
+                    """,
+                    reading_id,
+                    float(value.value),
+                    value.parameter_code,
+                    parameter_category_code,
+                )
+                if cursor.rowcount == 0:
                     self.conn.rollback()
                     self._disconnect()
                     raise Exception(
                         f"Parâmetro não encontrado: {value.parameter_code}"
                     )
-
-                cursor.execute(
-                    """
-                    INSERT INTO ReadingValues (ReadingId, ParameterId, Value)
-                    VALUES (?, ?, ?)
-                    """,
-                    reading_id,
-                    param_id,
-                    float(value.value),
-                )
                 logger.debug(
                     "Valor do parâmetro %s persistido.",
                     value.parameter_code,
@@ -228,16 +235,16 @@ class ReadingRepository:
             self._disconnect()
             raise Exception(f"Erro ao persistir leitura: {e}")
 
-    def save_many(self, readings: Sequence[Reading], parameter_category_id: int) -> list[int]:
+    def save_many(self, readings: Sequence[Reading], parameter_category_code: str) -> list[int]:
         """Persiste múltiplas leituras no banco.
         
         Args:
             readings: Sequência de leituras a persistir
-            parameter_category_id: Categoria dos parâmetros (1=Weather, 2=Water). Obrigatório.
+            parameter_category_code: Código da categoria dos parâmetros (ex: "WEATHER", "WATER"). Obrigatório.
         """
         reading_ids: list[int] = []
         for reading in readings:
-            reading_id = self.save(reading, parameter_category_id)
+            reading_id = self.save(reading, parameter_category_code)
             reading_ids.append(reading_id)
         return reading_ids
 
@@ -333,8 +340,9 @@ class ReadingRepository:
 
             cursor.execute(
                 """
-                SELECT DISTINCT r.Id, r.StationId, r.DateTime
+                SELECT DISTINCT r.Id, r.StationId, r.DateTime, o.Id, o.UserId, o.ServiceId
                 FROM Readings r
+                INNER JOIN Operators o ON r.OperatorId = o.Id
                 INNER JOIN ReadingValues rv ON r.Id = rv.ReadingId
                 INNER JOIN Parameters p ON rv.ParameterId = p.Id
                 WHERE r.StationId = ?
@@ -380,6 +388,7 @@ class ReadingRepository:
                         station_id=row[1],
                         timestamp=reading_datetime,
                         values=tuple(values),
+                        operator=Operator(id=row[3], user_id=row[4], service_id=row[5]),
                     )
                     readings.append(reading)
                     logger.debug(
@@ -405,7 +414,7 @@ class ReadingRepository:
             self._connect()
             cursor = self.conn.cursor()
             cursor.execute(
-                "SELECT Id, Code, Name, Latitude, Longitude FROM Stations ORDER BY Code"
+                "SELECT Id, Code, Name, Latitude, Longitude, Municipality, State, Country FROM Stations ORDER BY Code"
             )
             rows = cursor.fetchall()
             self._disconnect()
@@ -417,6 +426,9 @@ class ReadingRepository:
                     name=row[2],
                     latitude=Decimal(str(row[3])),
                     longitude=Decimal(str(row[4])),
+                    municipality=row[5],
+                    state=row[6],
+                    country=row[7],
                 )
                 for row in rows
             ]
@@ -504,6 +516,25 @@ class ReadingRepository:
             return codes
         except Exception as e:
             raise Exception(f"Erro ao buscar códigos de parâmetros: {e}")
+
+    def get_operator_by_service_code(self, operator_code: str) -> Operator | None:
+        """Busca o operador ligado a um serviço pelo código do operador."""
+        try:
+            self._connect()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT Id, UserId, ServiceId FROM Operators "
+                "WHERE Code = ?",
+                (operator_code,),
+            )
+            row = cursor.fetchone()
+            self._disconnect()
+
+            if row:
+                return Operator(id=row[0], user_id=row[1], service_id=row[2])
+            return None
+        except Exception as e:
+            raise Exception(f"Erro ao buscar operador do serviço: {e}")
 
     def get_parameters_by_CategoryCode(self, category_code: str) -> list[Parameter]:
         """Busca os parâmetros de uma categoria pelo código da categoria."""

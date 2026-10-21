@@ -104,6 +104,7 @@ OPERATORS TABLE
 CREATE TABLE dbo.Operators
 (
     Id INT IDENTITY(1,1) NOT NULL,
+    Code VARCHAR(100) NOT NULL UNIQUE,
     UserId INT NULL,
     ServiceId INT NULL,
 
@@ -128,7 +129,10 @@ CREATE TABLE dbo.Operators
         UNIQUE (UserId),
 
     CONSTRAINT UQ_Operators_Service
-        UNIQUE (ServiceId)
+        UNIQUE (ServiceId),
+
+    CONSTRAINT UQ_Operators_Code
+        UNIQUE (Code)
 );
 GO
 /*
@@ -203,15 +207,13 @@ READING VALUES TABLE
 */
 CREATE TABLE dbo.ReadingValues
 (
-    Id BIGINT IDENTITY(1,1) NOT NULL,
     ReadingId BIGINT NOT NULL,
     ParameterId INT NOT NULL,
     Value DECIMAL(18,4) NOT NULL,
     
-    CONSTRAINT PK_ReadingValues PRIMARY KEY (Id),
+    CONSTRAINT PK_ReadingValues PRIMARY KEY (ReadingId, ParameterId),
     CONSTRAINT FK_ReadingValues_Readings FOREIGN KEY (ReadingId) REFERENCES dbo.Readings(Id),
-    CONSTRAINT FK_ReadingValues_Parameters FOREIGN KEY (ParameterId) REFERENCES dbo.Parameters(Id),
-    CONSTRAINT UQ_ReadingValues UNIQUE (ReadingId, ParameterId)
+    CONSTRAINT FK_ReadingValues_Parameters FOREIGN KEY (ParameterId) REFERENCES dbo.Parameters(Id)
 );
 GO
 

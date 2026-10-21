@@ -137,9 +137,16 @@ OPERATORS
 INSERT INTO dbo.Operators
 (
     UserId,
-    ServiceId
+    ServiceId,
+    Code
 )
 VALUES
-(1, null),
-(null, 1);
+(1, null, 'OP_USER_SASS'),
+(null, 1, 'OP_SERVICE_MEERSENS');
 GO
+
+SELECT * FROM dbo.Services;
+
+SELECT * FROM dbo.Readings;
+
+SELECT * FROM dbo.ReadingValues;

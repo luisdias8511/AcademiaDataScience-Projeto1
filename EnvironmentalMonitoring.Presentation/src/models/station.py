@@ -23,7 +23,10 @@ class Station:
     code: str
     name: str
     latitude: Decimal
-    longitude: Decimal
+    longitude: Decimal    
+    municipality: str
+    state: str
+    country: str
 
     def __post_init__(self) -> None:
         """Valida os invariantes da estação após inicialização."""
