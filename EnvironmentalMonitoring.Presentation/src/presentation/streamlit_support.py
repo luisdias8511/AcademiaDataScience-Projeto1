@@ -277,7 +277,7 @@ def parser_readings(
             "ingestion_datetime": ingestion_datetime,
             "station": station_metadata,
         }
-        readings_weather_temp, documents_weather_temp = dataParser.build_documents_readings(SERVICES["weather"]["specifications_name"], weather_readings_json, metadata, selected_station.id, operator_weather, allowed_parameters_weather)
+        readings_weather_temp, documents_weather_temp = dataParser.build_documents_readings(SERVICES["weather"]["specifications_name"], weather_readings_json, metadata, selected_station.id, operator_weather, allowed_parameters_weather, SERVICES["weather"]["category_code"])
         readings_weather.extend(readings_weather_temp)
         documents_weather.extend(documents_weather_temp)
 
@@ -294,7 +294,7 @@ def parser_readings(
             "ingestion_datetime": ingestion_datetime,
             "station": station_metadata,
         }
-        readings_water_temp, documents_water_temp = dataParser.build_documents_readings(SERVICES["water"]["specifications_name"], water_readings_json, metadata, selected_station.id, operator_water, allowed_parameters_water)
+        readings_water_temp, documents_water_temp = dataParser.build_documents_readings(SERVICES["water"]["specifications_name"], water_readings_json, metadata, selected_station.id, operator_water, allowed_parameters_water, SERVICES["water"]["category_code"])
         readings_water.extend(readings_water_temp)
         documents_water.extend(documents_water_temp)
 

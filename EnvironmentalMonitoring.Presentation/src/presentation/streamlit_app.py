@@ -303,7 +303,7 @@ def page_analytics():
                 len(result.outliers)
                 for result in stats
             )
-            st.subheader("**Estatísticas Meteorológicas**")       
+            # st.subheader("**Estatísticas Meteorológicas**")       
             st.divider()     
             st.metric(
                 "Parâmetros",
@@ -331,42 +331,42 @@ def page_analytics():
 
         st.divider()
 
-        #Qualidade da Água    
-        if st.session_state.water_statistics:
-            stats = st.session_state.water_statistics
-            total_obs = sum(
-                result.count
-                for result in stats
-            )
-            total_out = sum(
-                len(result.outliers)
-                for result in stats
-            )
-            st.subheader("**Estatísticas de Qualidade da Água**")
-            st.divider()
-            st.metric(
-                "Parâmetros",
-                len(stats),
-            )            
-            st.metric(
-                "Observações",
-                total_obs,
-            )            
-            st.metric(
-                "Outliers",
-                total_out,
-            )    
+        # #Qualidade da Água    
+        # if st.session_state.water_statistics:
+        #     stats = st.session_state.water_statistics
+        #     total_obs = sum(
+        #         result.count
+        #         for result in stats
+        #     )
+        #     total_out = sum(
+        #         len(result.outliers)
+        #         for result in stats
+        #     )
+        #     st.subheader("**Estatísticas de Qualidade da Água**")
+        #     st.divider()
+        #     st.metric(
+        #         "Parâmetros",
+        #         len(stats),
+        #     )            
+        #     st.metric(
+        #         "Observações",
+        #         total_obs,
+        #     )            
+        #     st.metric(
+        #         "Outliers",
+        #         total_out,
+        #     )    
             
-            render_statistics_table(stats)
+        #     render_statistics_table(stats)
             
-            st.write("**Downloads**")
-            render_download_buttons(
-                st.session_state.water_csv_path,
-                st.session_state.water_outliers_path,
-                "water",
-            )
-        else:
-            st.info("Nenhum resultado de qualidade da água disponível.")
+        #     st.write("**Downloads**")
+        #     render_download_buttons(
+        #         st.session_state.water_csv_path,
+        #         st.session_state.water_outliers_path,
+        #         "water",
+        #     )
+        # else:
+        #     st.info("Nenhum resultado de qualidade da água disponível.")
 
 
 # ============================================================================
