@@ -12,7 +12,7 @@ from src.config import logger                   # logger estruturado (JSON) do p
 from src.security.log_utils import tratar_erro  # função padronizada para registrar erros
 try:
     logger.info("Iniciando Cadastro de Usuários")
-    st.set_page_config(page_title="Cadastro de Usuários", page_icon="👤")
+    #st.set_page_config(page_title="Cadastro de Usuários", page_icon="👤") #Removido para evitar conflito com múltiplas chamadas de set_page_config quando é chamada de outro módulo
     st.title("Cadastro de Usuários")
     st.caption("🔒 Nome, CPF, e-mail, telefone e senha são protegidos (LGPD) antes de serem gravados.")
     with st.form("user_form"):

@@ -19,7 +19,7 @@ IRREVERSIVEL = "🔒 Hash SHA-256 (irreversível)"
 
 try:
     logger.info("Iniciando Consulta de Usuários (LGPD)")
-    st.set_page_config(page_title="Consulta de Usuários (LGPD)", page_icon="🔐", layout="wide")
+    #st.set_page_config(page_title="Consulta de Usuários (LGPD)", page_icon="🔐", layout="wide") #Removido para evitar conflito com múltiplas chamadas de set_page_config quando é chamada de outro módulo
     st.title("Consulta de Usuários (LGPD)")
     st.caption("Dados exibidos como estão gravados no banco. "
                "Somente nome, e-mail e telefone podem ser descriptografados; CPF e Senha são hash.")
