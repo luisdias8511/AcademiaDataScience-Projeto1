@@ -8,3 +8,4 @@ streamlit==1.40.1
 azure-storage-blob==12.27.0
 jsonschema[format]==4.26.0
 streamlit-avatar==0.1.5
+pyarrow==26.0.0
