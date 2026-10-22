@@ -89,3 +89,31 @@ class UserRepository:
             return cursor.fetchone() is not None
         finally:
             self.db._disconnect()
+
+
+
+    # ------------------------------------------------------------------ login
+    def get_login_data(self, username: str) -> Dict[str, Any] | None:
+        """Busca os dados necessários para o login (sem nenhum dado pessoal).
+
+        Retorna None se o usuário não existir.
+        A senha NÃO é comparada no banco: o hash PBKDF2 é conferido no serviço.
+        """
+        self.db._connect()
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute(
+                "SELECT Id, Username, PasswordHash, Atribution FROM Users WHERE Username = ?",
+                username,
+            )
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            return {
+                "id_usuario": row[0],     # Id
+                "username": row[1],       # Username
+                "password_hash": row[2],  # PasswordHash
+                "atribution": row[3],     # Atribution
+            }
+        finally:
+            self.db._disconnect()

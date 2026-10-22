@@ -8,7 +8,7 @@ EXECUTAR:
 - Interface CLI:                 python -m src.main --cli
 - Interface Streamlit (tela cadastro de usuários):  python -m src.main --register-user
 - Interface Streamlit (tela exibição de usuários):  python -m src.main --viewer-user
-
+- Interface Streamlit (tela de login):              python -m src.main --login
 """
 
 import sys
@@ -229,6 +229,18 @@ def run_viewer_user_registration_pipeline():
     display_user_app = Path(__file__).parent / "presentation" / "user_data_viewer_app.py"
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(display_user_app)])
 
+# ============================================================================
+# PIPELINE DE LOGIN
+# ============================================================================
+
+def run_login_pipeline():
+    """Executa a tela Streamlit de login."""
+    from pathlib import Path
+
+    login_app = Path(__file__).parent / "presentation" / "main_login_app.py"
+    subprocess.run([sys.executable, "-m", "streamlit", "run", str(login_app)])
+
+
 
 # ============================================================================
 # PIPELINE STREAMLIT
@@ -267,6 +279,8 @@ def main():
         run_register_user_registration_pipeline()
     elif "--viewer-user" in sys.argv:
         run_viewer_user_registration_pipeline()
+    elif "--login" in sys.argv:
+        run_login_pipeline()
     else:
         # Por padrão, executar Streamlit
         run_streamlit_pipeline()

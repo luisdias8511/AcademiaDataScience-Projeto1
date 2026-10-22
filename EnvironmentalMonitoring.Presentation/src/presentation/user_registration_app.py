@@ -56,7 +56,7 @@ def show_user_registration_page():
 # ============================================================================
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Cadastro de Usuários", page_icon="👤")
+    #st.set_page_config(page_title="Cadastro de Usuários", page_icon="👤") #Removido para evitar conflito com múltiplas chamadas de set_page_config quando é chamada de outro módulo
     st.title("Cadastro de Usuários")
     st.caption("🔒 Nome, CPF, e-mail, telefone e senha são protegidos (LGPD) antes de serem gravados.")
     st.divider()
