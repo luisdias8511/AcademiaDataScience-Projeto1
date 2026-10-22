@@ -19,10 +19,12 @@ class ReadingValue:
     
     Atributos:
         parameter_code: Código do parâmetro.
+        parameter_category_code: Código da categoria do parâmetro (WEATHER, WATER, etc).
         value: Valor numérico da medição convertido para Decimal.
     """
 
     parameter_code: str
+    parameter_category_code: str
     value: Decimal
 
     def __post_init__(self) -> None:

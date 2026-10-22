@@ -277,7 +277,7 @@ def parser_readings(
             "ingestion_datetime": ingestion_datetime,
             "station": station_metadata,
         }
-        readings_weather_temp, documents_weather_temp = dataParser.build_documents_readings(SERVICES["weather"]["specifications_name"], weather_readings_json, metadata, selected_station.id, operator_weather, allowed_parameters_weather)
+        readings_weather_temp, documents_weather_temp = dataParser.build_documents_readings(SERVICES["weather"]["specifications_name"], weather_readings_json, metadata, selected_station.id, operator_weather, allowed_parameters_weather, SERVICES["weather"]["category_code"])
         readings_weather.extend(readings_weather_temp)
         documents_weather.extend(documents_weather_temp)
 
@@ -294,7 +294,7 @@ def parser_readings(
             "ingestion_datetime": ingestion_datetime,
             "station": station_metadata,
         }
-        readings_water_temp, documents_water_temp = dataParser.build_documents_readings(SERVICES["water"]["specifications_name"], water_readings_json, metadata, selected_station.id, operator_water, allowed_parameters_water)
+        readings_water_temp, documents_water_temp = dataParser.build_documents_readings(SERVICES["water"]["specifications_name"], water_readings_json, metadata, selected_station.id, operator_water, allowed_parameters_water, SERVICES["water"]["category_code"])
         readings_water.extend(readings_water_temp)
         documents_water.extend(documents_water_temp)
 
@@ -424,12 +424,12 @@ def calculate_statistics(
     return weather_statistics, water_statistics
 
 
-def run_pipeline(
+def run_ingestion_pipeline(
     selected_station,
     start_date_value: date,
     end_date_value: date,
 ) -> bool:
-    """Executa o pipeline completo de análise.
+    """Executa o pipeline de ingestão e persistência (Etapas 1-5.3).
     
     Args:
         selected_station: Estação selecionada.
@@ -533,8 +533,65 @@ def run_pipeline(
         st.write(f"Meteorologia: {weather_inserted} leitura(s) inserida(s) e {weather_updated} atualizada(s).")
         st.write(f"Qualidade da água: {water_inserted} leitura(s) inserida(s) e {water_updated} atualizada(s).")        
         
+        # Conclusão
+        progress_bar.progress(100, text="Pipeline de ingestão concluído com sucesso.")
+        
+        elapsed_time = perf_counter() - start_time        
+        st.success("Pipeline de ingestão concluído com sucesso!")
+        return True
+    
+    except Exception as e:
+        tratar_erro(
+            e,
+            "Falha durante o pipeline de ingestão no Streamlit",
+            encerrar=False,
+        )  
+        
+        st.error(
+            "Não foi possível concluir o pipeline de ingestão. Consulte os logs para obter mais detalhes."
+        )
+        
+        return False
+
+
+def run_analytics_pipeline(
+    selected_station,
+    start_date_value: date,
+    end_date_value: date,
+) -> bool:
+    """Executa o pipeline de analytics e relatórios (Etapas 6-8).
+    
+    Args:
+        selected_station: Estação selecionada.
+        start_date_value: Data inicial (date).
+        end_date_value: Data final (date).
+    
+    Returns:
+        bool: True se sucesso, False se erro.
+    """
+    start_time = perf_counter()
+    
+    progress_bar = st.progress(0, text="Preparando a execução...")
+    
+    try:
+        # Conectar ao banco
+        progress_bar.progress(10, text="Conectando ao banco de dados.")
+        repository = ReadingRepository()
+        
+        # Converter datas para datetime com UTC
+        start_date = datetime.combine(
+            start_date_value,
+            datetime.min.time(),
+            tzinfo=timezone.utc,
+        )
+        end_date = datetime.combine(
+            end_date_value,
+            datetime.min.time(),
+            tzinfo=timezone.utc,
+        )
+        
         # Etapa 6: Recuperar dados
-        progress_bar.progress(80, text="Recuperando dados persistidos.")
+        progress_bar.progress(30, text="Recuperando dados persistidos.")
         
         weather_from_db, water_from_db = load_saved_readings(
             repository,
@@ -543,8 +600,11 @@ def run_pipeline(
             end_date,
         )
         
+        st.write(f"Meteorologia: {len(weather_from_db)} leitura(s) recuperada(s).")
+        st.write(f"Qualidade da água: {len(water_from_db)} leitura(s) recuperada(s).")
+        
         # Etapa 7: Analytics
-        progress_bar.progress(90, text="Calculando estatísticas.")
+        progress_bar.progress(60, text="Calculando estatísticas.")
         
         st.write("Calculando as estatísticas...")
         
@@ -556,7 +616,7 @@ def run_pipeline(
         )
         
         # Etapa 8: Exportar CSV
-        progress_bar.progress(95, text="Gerando arquivos CSV.")
+        progress_bar.progress(85, text="Gerando arquivos CSV.")
         
         st.write("Exportando estatísticas para CSV...")
         
@@ -597,22 +657,46 @@ def run_pipeline(
             f"{start_date_value} até {end_date_value}"
         )
         
-        # Etapa 9: Conclusão
-        progress_bar.progress(100, text="Fluxo concluído com sucesso.")
+        # Conclusão
+        progress_bar.progress(100, text="Pipeline de analytics concluído com sucesso.")
         
         elapsed_time = perf_counter() - start_time        
-        st.success("Fluxo concluído com sucesso!")
+        st.success("Pipeline de analytics concluído com sucesso!")
         return True
     
     except Exception as e:
         tratar_erro(
             e,
-            "Falha durante a execução da interface Streamlit",
+            "Falha durante o pipeline de analytics no Streamlit",
             encerrar=False,
         )  
         
         st.error(
-            "Não foi possível concluir o fluxo. Consulte os logs para obter mais detalhes."
+            "Não foi possível concluir o pipeline de analytics. Consulte os logs para obter mais detalhes."
         )
         
         return False
+
+
+def run_pipeline(
+    selected_station,
+    start_date_value: date,
+    end_date_value: date,
+) -> bool:
+    """Executa o pipeline completo de análise (mantido por compatibilidade).
+    
+    Args:
+        selected_station: Estação selecionada.
+        start_date_value: Data inicial (date).
+        end_date_value: Data final (date).
+    
+    Returns:
+        bool: True se sucesso, False se erro.
+    """
+    success_ingestion = run_ingestion_pipeline(selected_station, start_date_value, end_date_value)
+    
+    if success_ingestion:
+        success_analytics = run_analytics_pipeline(selected_station, start_date_value, end_date_value)
+        return success_analytics
+    
+    return False

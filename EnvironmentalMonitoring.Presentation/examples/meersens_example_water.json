@@ -1,0 +1,93 @@
+{
+  "found": true,
+  "values": [
+    {
+      "found": true,
+      "datetime": "2026-10-12T09:00:00.000Z",
+      "parameters": {
+        "conductivity": {
+          "shortcode": "Cond",
+          "name": "Conductivity",
+          "found": true,
+          "confidence": 4.5,
+          "value": 450.5,
+          "unit": "µS/cm"
+        },
+        "ph": {
+          "shortcode": "pH",
+          "name": "pH",
+          "found": true,
+          "confidence": 4.5,
+          "value": 7.2,
+          "unit": ""
+        },
+        "turbidity": {
+          "shortcode": "Turb",
+          "name": "Turbidity",
+          "found": true,
+          "confidence": 4.5,
+          "value": 2.1,
+          "unit": "NTU"
+        },
+        "water_temperature": {
+          "shortcode": "wT",
+          "name": "Water Temperature",
+          "found": true,
+          "confidence": 4.5,
+          "value": 18.5,
+          "unit": "°C"
+        }
+      }
+    },
+    {
+      "found": true,
+      "datetime": "2026-10-12T10:00:00.000Z",
+      "parameters": {
+        "conductivity": {
+          "value": 455.2,
+          "unit": "µS/cm"
+        },
+        "ph": {
+          "value": 7.1,
+          "unit": ""
+        },
+        "turbidity": {
+          "value": 2.3,
+          "unit": "NTU"
+        },
+        "water_temperature": {
+          "value": 18.7,
+          "unit": "°C"
+        }
+      }
+    },
+    {
+      "found": true,
+      "datetime": "2026-10-12T11:00:00.000Z",
+      "parameters": {
+        "conductivity": {
+          "value": 448.9,
+          "unit": "µS/cm"
+        },
+        "ph": {
+          "value": 7.15,
+          "unit": ""
+        },
+        "turbidity": {
+          "value": 1.9,
+          "unit": "NTU"
+        },
+        "water_temperature": {
+          "value": 18.3,
+          "unit": "°C"
+        }
+      }
+    }
+  ],
+  "page": {
+    "totalElements": 12,
+    "totalPages": 2,
+    "pageNumber": 1,
+    "size": 6
+  }
+}

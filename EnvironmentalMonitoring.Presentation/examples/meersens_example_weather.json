@@ -1,0 +1,61 @@
+{
+  "found": true,
+  "values": [
+    {
+      "found": true,
+      "datetime": "2026-10-12T06:00:00.000Z",
+      "parameters": {
+        "temperature": {
+          "shortcode": "T",
+          "name": "Temperature",
+          "found": true,
+          "confidence": 4.5,
+          "value": 12.55,
+          "unit": "°C"
+        },
+        "humidity": {
+          "shortcode": "rH",
+          "name": "Humidity",
+          "found": true,
+          "confidence": 4.5,
+          "value": 87.7,
+          "unit": "%"
+        }
+      }
+    },
+    {
+      "found": true,
+      "datetime": "2026-10-12T07:00:00.000Z",
+      "parameters": {
+        "temperature": {
+          "value": 12.7,
+          "unit": "°C"
+        },
+        "humidity": {
+          "value": 89.25,
+          "unit": "%"
+        }
+      }
+    },
+    {
+      "found": true,
+      "datetime": "2026-10-12T08:00:00.000Z",
+      "parameters": {
+        "temperature": {
+          "value": 12.81,
+          "unit": "°C"
+        },
+        "humidity": {
+          "value": 93.24,
+          "unit": "%"
+        }
+      }
+    }
+  ],
+  "page": {
+    "totalElements": 24,
+    "totalPages": 4,
+    "pageNumber": 1,
+    "size": 6
+  }
+}

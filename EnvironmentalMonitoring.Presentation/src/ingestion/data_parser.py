@@ -17,7 +17,8 @@ class DataParser:
         specifications_name: str,
         orinal_reading_json: dict,
         metadata: dict,
-        allowed_parameters: list[Parameter]
+        allowed_parameters: list[Parameter],
+        category_code: str
     ) -> tuple[dict, list[ReadingValue]] | None:
         specifications  = []
         readingValues =[]
@@ -36,6 +37,7 @@ class DataParser:
             })
             readingValues.append(ReadingValue(
                 parameter_code=allowed.code,
+                parameter_category_code=category_code,
                 value=source_specification["value"]
             ))
 
@@ -57,7 +59,8 @@ class DataParser:
         metadata: dict,
         station_id: int,
         operator: Operator,
-        allowed_parameters: list[Parameter]
+        allowed_parameters: list[Parameter],
+        category_code: str
     ) -> tuple[list[Reading], list[dict]]:
         if isinstance(original_page_json, str):
             response = json.loads(original_page_json)
@@ -67,14 +70,25 @@ class DataParser:
         documents = []
 
         for value in response["values"]:
-            built = self.build_document_reading(specifications_name, value, metadata, allowed_parameters)
+            built = self.build_document_reading(specifications_name, value, metadata, allowed_parameters, category_code)
             if built is None:
                 continue
 
             document, reading_values = built
+            
+            # Filtrar ReadingValues para manter apenas da categoria esperada
+            filtered_values = [
+                rv for rv in reading_values 
+                if rv.parameter_category_code == category_code
+            ]
+            
+            # Pular se nenhum valor da categoria foi encontrado
+            if not filtered_values:
+                continue
+            
             blob_name = BlobPaths.build_blob_reading_name(metadata["station"]["code"], value["datetime"])
             timestamp = datetime.fromisoformat(value["datetime"])
-            readings.append(Reading(station_id=station_id, timestamp=timestamp, values=tuple(reading_values), operator=operator))
+            readings.append(Reading(station_id=station_id, timestamp=timestamp, values=tuple(filtered_values), operator=operator))
             documents.append({"blob_name": blob_name, "document": document})
 
         return readings, documents

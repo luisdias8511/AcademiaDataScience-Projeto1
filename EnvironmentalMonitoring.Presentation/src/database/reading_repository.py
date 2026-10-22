@@ -224,7 +224,7 @@ class ReadingRepository:
                     """,
                     reading_id,
                     value.parameter_code,
-                    parameter_category_code,
+                    value.parameter_category_code,
                 )
                 if cursor.rowcount > 0:
                     # TODO: Gerar log de backfill
@@ -241,7 +241,7 @@ class ReadingRepository:
                     reading_id,
                     float(value.value),
                     value.parameter_code,
-                    parameter_category_code,
+                    value.parameter_category_code,
                 )
                 if cursor.rowcount == 0:
                     self.conn.rollback()
@@ -402,9 +402,10 @@ class ReadingRepository:
                 # Busca valores da leitura
                 cursor.execute(
                     """
-                    SELECT p.Code, rv.Value
+                    SELECT p.Code, rv.Value, pc.Code
                     FROM ReadingValues rv
                     INNER JOIN Parameters p ON rv.ParameterId = p.Id
+                    INNER JOIN ParameterCategories pc ON p.CategoryId = pc.Id
                     WHERE rv.ReadingId = ?
                     """,
                     reading_id,
@@ -414,6 +415,7 @@ class ReadingRepository:
                 values = [
                     ReadingValue(
                         parameter_code=v[0],
+                        parameter_category_code=v[2],
                         value=Decimal(str(v[1])),
                     )
                     for v in cursor.fetchall()
