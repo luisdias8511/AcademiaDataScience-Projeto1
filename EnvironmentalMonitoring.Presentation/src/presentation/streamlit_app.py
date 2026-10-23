@@ -28,6 +28,7 @@ from src.presentation.streamlit_support import (
 from src.presentation.user_registration_app import show_user_registration_page
 from src.presentation.user_data_viewer_app import show_user_data_viewer_page
 from src.presentation.manual_ingestion_app import show_manual_ingestion_page
+from src.presentation.public_home_page import show_public_home_page
 from src.config import logger
 from src.security.log_utils import tratar_erro
 from streamlit_avatar import avatar
@@ -51,9 +52,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("Monitoramento e Análise de Dados Ambientais")
-
-# Inicializar session state
+# Inicializar session state ANTES de usar
 st.session_state.setdefault("weather_statistics", None)
 st.session_state.setdefault("water_statistics", None)
 st.session_state.setdefault("weather_csv_path", None)
@@ -62,12 +61,25 @@ st.session_state.setdefault("water_csv_path", None)
 st.session_state.setdefault("water_outliers_path", None)
 st.session_state.setdefault("selected_station_name", None)
 st.session_state.setdefault("selected_period", None)
-st.session_state.setdefault("current_page", "home")
+st.session_state.setdefault("current_page", "public_home")
 st.session_state.setdefault("decrypted_id", None)
 st.session_state.setdefault("decrypted", None)
 
+# Mostrar título apenas nas páginas autenticadas
+if st.session_state.current_page != "public_home":
+    st.title("Monitoramento e Análise de Dados Ambientais")
+
 # ============================================================================
-# FUNÇÃO PÁGINA INICIAL
+# FUNÇÃO PÁGINA HOME PÚBLICA
+# ============================================================================
+
+def page_public_home():
+    """Página Home pública (não autenticada)."""
+    show_public_home_page()
+
+
+# ============================================================================
+# FUNÇÃO PÁGINA INICIAL (AUTENTICADA)
 # ============================================================================
 
 def page_home():
@@ -552,7 +564,9 @@ def page_dashboard():
 def main():
     """Função principal que renderiza a interface."""
     
-    if st.session_state.current_page == "home":
+    if st.session_state.current_page == "public_home":
+        page_public_home()
+    elif st.session_state.current_page == "home":
         page_home()
     elif st.session_state.current_page == "ingestion":
         page_ingestion()
