@@ -156,21 +156,25 @@ def show_manual_ingestion_page():
     st.markdown("Carregue um arquivo JSON com dados ambientais para persistência manual.")
     st.divider()
     
-    # Seção 1: Validação de Usuário
+    # Seção 1: Validação de Usuário - Obtém automaticamente do session_state
     st.subheader("1️⃣ Validação de Usuário")
-    username = st.text_input(
-        "Username",
-        placeholder="Teste10",
-        key="manual_ingestion_username",
-    )
     
+    # Obter username do usuário logado
+    usuario_logado = st.session_state.get("usuario")
+    username = usuario_logado.get("username") if usuario_logado else None
+    
+    st.write(f"**Operador:** {username}")
+    
+    # Buscar operator automaticamente
     operator = None
     if username:
         operator = get_operator_by_username(username)
-        if operator:
-            st.success(f"✅ Usuário encontrado (Operador ID: {operator.id})")
-        else:
-            st.error("❌ Usuário não encontrado ou sem operador associado.")
+        if not operator:
+            logger.error(f"Usuário {username} não encontrado ou sem operador associado")
+            st.error(f"❌ Usuário não encontrado ou sem operador associado.")
+    else:
+        logger.error("Nenhum usuário logado ao acessar ingestão manual")
+        st.error("❌ Nenhum usuário logado.")
     
     st.divider()
     
@@ -180,10 +184,10 @@ def show_manual_ingestion_page():
         "Selecione um arquivo JSON",
         type=["json"],
         key="manual_ingestion_upload",
+        disabled=not operator,  # Desabilita se não tiver operator
     )
     
     if not uploaded_file or not operator:
-        st.info("Preencha o username e valide o operador antes de fazer upload.")
         return
     
     # Seção 3: Processamento

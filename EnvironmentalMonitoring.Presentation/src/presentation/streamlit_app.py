@@ -22,13 +22,13 @@ from src.presentation.streamlit_support import (
     render_statistics_table,
     render_download_buttons,
     run_ingestion_pipeline,
-    run_analytics_pipeline,
-    run_pipeline,
+    run_analytics_pipeline
 )
 from src.presentation.user_registration_app import show_user_registration_page
 from src.presentation.user_data_viewer_app import show_user_data_viewer_page
 from src.presentation.manual_ingestion_app import show_manual_ingestion_page
 from src.presentation.public_home_page import show_public_home_page
+from src.presentation.login_page import show_login_page
 from src.config import logger
 from src.security.log_utils import tratar_erro
 from streamlit_avatar import avatar
@@ -64,79 +64,124 @@ st.session_state.setdefault("selected_period", None)
 st.session_state.setdefault("current_page", "public_home")
 st.session_state.setdefault("decrypted_id", None)
 st.session_state.setdefault("decrypted", None)
+st.session_state.setdefault("usuario", None)
+st.session_state.setdefault("ultimo_acesso", None)
+
+# ============================================================================
+# CONTROLE DE SESSÃO E AUTENTICAÇÃO
+# ============================================================================
+
+import time
+
+TEMPO_INATIVIDADE_MIN = int(__import__('os').getenv("TEMPO_INATIVIDADE_MIN", 30))
+
+def verificar_sessao():
+    """Verifica se o usuário está logado e se a sessão não expirou."""
+    if "usuario" in st.session_state and st.session_state.usuario:
+        agora = time.time()
+        if "ultimo_acesso" in st.session_state and st.session_state.ultimo_acesso:
+            if agora - st.session_state.ultimo_acesso > TEMPO_INATIVIDADE_MIN * 60:
+                _logout("inatividade")
+                st.warning("Sessão expirada por inatividade. Faça login novamente.")
+                st.rerun()
+        st.session_state.ultimo_acesso = agora
+
+
+verificar_sessao()
+
+def _logout(motivo: str = "manual") -> None:
+    """Realiza logout do usuário com registro em log.
+    
+    Args:
+        motivo: Razão do logout (manual, inatividade, etc)
+    """
+    usuario = st.session_state.get("usuario")
+    if usuario:
+        logger.info("Logout", extra={"usuario_id": usuario.get("id_usuario", "N/A"), "motivo": motivo})
+    st.session_state.clear()
+    st.session_state.current_page = "public_home"
+
+# ============================================================================
+# BARRA LATERAL - Apenas para usuários autenticados (pós-login)
+# ============================================================================
+
+if st.session_state.usuario and st.session_state.current_page not in ["login"]:
+    with st.sidebar:
+        usuario = st.session_state.usuario
+
+def page_1():
+        # Link HTML clicável (texto simples)
+        st.markdown("""
+        <span style="cursor: pointer; text-decoration: none; color: inherit; font-size: 16px;">
+           monitoramento ambiental
+        </span>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"**{usuario.get('username', 'Usuário')}**  \n{usuario.get('atribution', '')}")
+
+       
+        # Home
+        if st.button("Home", use_container_width=True, key="sidebar_home"):
+            st.session_state.current_page = "public_home"
+            st.rerun()
+        
+        st.markdown("---")
+        st.markdown("**Pipelines Ambientais**")
+        
+        # Pipelines Ambientais
+        if st.button("Ingestão de Dados", use_container_width=True, key="sidebar_ingestion"):
+            st.session_state.current_page = "ingestion"
+            st.rerun()
+        
+        if st.button("Ingestão Manual", use_container_width=True, key="sidebar_manual_ingestion"):
+            st.session_state.current_page = "manual_ingestion"
+            st.rerun()
+        
+        if st.button("Analytics e Relatórios", use_container_width=True, key="sidebar_analytics"):
+            st.session_state.current_page = "analytics"
+            st.rerun()
+        
+        if st.button("Dashboard", use_container_width=True, key="sidebar_dashboard"):
+            st.session_state.current_page = "dashboard"
+            st.rerun()
+        
+        st.markdown("---")
+        st.markdown("**Gestão de Usuários**")
+        
+        # Gestão de Usuários
+        if st.button("Cadastro de Usuários", use_container_width=True, key="sidebar_user_registration"):
+            st.session_state.current_page = "user_registration"
+            st.rerun()
+        
+        if st.button("Consulta de Usuários", use_container_width=True, key="sidebar_user_viewer"):
+            st.session_state.current_page = "user_viewer"
+            st.rerun()
+        
+        st.divider()
+        if st.button("Sair", use_container_width=True, key="sidebar_logout"):
+            _logout()
+            st.rerun()
 
 # Mostrar título apenas nas páginas autenticadas
-if st.session_state.current_page != "public_home":
+if st.session_state.current_page not in ["public_home"]:
     st.title("Monitoramento e Análise de Dados Ambientais")
 
 # ============================================================================
-# FUNÇÃO PÁGINA HOME PÚBLICA
+# FUNÇÃO PÁGINA HOME
 # ============================================================================
 
 def page_public_home():
-    """Página Home pública (não autenticada)."""
+    """Página Home"""
     show_public_home_page()
 
 
 # ============================================================================
-# FUNÇÃO PÁGINA INICIAL (AUTENTICADA)
+# FUNÇÃO PÁGINA LOGIN
 # ============================================================================
 
-def page_home():
-    """Página inicial com links para os pipelines."""
-    st.markdown("### Plataforma de Monitoramento Ambiental e Gestão de Usuários")
-    st.markdown("Escolha uma opção para começar:")
-    st.divider()
-    
-    # Linha 1: Pipelines Ambientais
-    st.markdown("**📊 Pipelines de Dados Ambientais**")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("📥 Ingestão de Dados", use_container_width=True, key="btn_ingestion"):
-            st.session_state.current_page = "ingestion"
-            st.rerun()
-    
-    with col2:
-        if st.button("📋 Ingestão Manual", use_container_width=True, key="btn_manual_ingestion"):
-            st.session_state.current_page = "manual_ingestion"
-            st.rerun()
-    
-    with col3:
-        if st.button("📈 Analytics e Relatórios", use_container_width=True, key="btn_analytics"):
-            st.session_state.current_page = "analytics"
-            st.rerun()
-    
-    with col4:
-        if st.button("📊 Dashboard", use_container_width=True, key="btn_dashboard"):
-            st.session_state.current_page = "dashboard"
-            st.rerun()
-    
-    st.divider()
-    
-    # Linha 2: Gestão de Usuários
-    st.markdown("**👥 Gestão de Usuários**")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("👤 Cadastro de Usuários", use_container_width=True, key="btn_user_registration"):
-            st.session_state.current_page = "user_registration"
-            st.rerun()
-    
-    with col2:
-        if st.button("🔐 Consulta de Usuários (LGPD)", use_container_width=True, key="btn_user_viewer"):
-            st.session_state.current_page = "user_viewer"
-            st.rerun()
-    
-    st.divider()
-    
-    # Linha 3: Informações
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("ℹ️ Sobre Nós", use_container_width=True, key="btn_about"):
-            st.session_state.current_page = "about"
-            st.rerun()
+def page_login():
+    """Página de login."""
+    show_login_page()
 
 
 # ============================================================================
@@ -145,15 +190,7 @@ def page_home():
 
 def page_ingestion():
     """Página de ingestão de dados."""
-    col1, col2 = st.columns([4, 1])
-    
-    with col1:
-        st.markdown("### 📥 Pipeline de Ingestão e Persistência")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_ingestion"):
-            st.session_state.current_page = "home"
-            st.rerun()
+    st.markdown("### Pipeline de Ingestão e Persistência")
     
     st.markdown("Coleta e persistência de dados meteorológicos e de qualidade da água.")
     st.divider()
@@ -231,15 +268,7 @@ def page_ingestion():
 
 def page_manual_ingestion():
     """Página de ingestão manual de dados."""
-    col1, col2 = st.columns([4, 1])
-    
-    with col1:
-        st.markdown("### 📋 Ingestão Manual via JSON")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_manual_ingestion"):
-            st.session_state.current_page = "home"
-            st.rerun()
+    st.markdown("### Ingestão Manual via JSON")
     
     show_manual_ingestion_page()
 
@@ -250,15 +279,7 @@ def page_manual_ingestion():
 
 def page_analytics():
     """Página de analytics e relatórios."""
-    col1, col2 = st.columns([4, 1])
-    
-    with col1:
-        st.markdown("### 📊 Pipeline de Analytics e Relatórios")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_analytics"):
-            st.session_state.current_page = "home"
-            st.rerun()
+    st.markdown("### Pipeline de Analytics e Relatórios")
     
     st.markdown("Análise de dados e geração de relatórios.")
     st.divider()
@@ -417,15 +438,7 @@ def page_analytics():
 
 def page_user_registration():
     """Página de cadastro de usuários."""
-    col1, col2 = st.columns([4, 1])
-    
-    with col1:
-        st.markdown("### 👤 Cadastro de Usuários")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_user_registration"):
-            st.session_state.current_page = "home"
-            st.rerun()
+    st.markdown("### 👤 Cadastro de Usuários")
     
     st.caption("🔒 Nome, CPF, e-mail, telefone e senha são protegidos (LGPD) antes de serem gravados.")
     st.divider()
@@ -440,15 +453,7 @@ def page_user_registration():
 
 def page_user_data_viewer():
     """Página de consulta de usuários com dados protegidos (LGPD)."""
-    col1, col2 = st.columns([4, 1])
-    
-    with col1:
-        st.markdown("### 🔐 Consulta de Usuários (LGPD)")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_user_viewer"):
-            st.session_state.current_page = "home"
-            st.rerun()
+    st.markdown("### Consulta de Usuários (LGPD)")
     
     st.caption("Dados exibidos como estão gravados no banco. "
                "Somente nome, e-mail e telefone podem ser descriptografados; CPF e Senha são hash.")
@@ -457,104 +462,23 @@ def page_user_data_viewer():
     # Chamar a função do arquivo user_data_viewer_app.py
     show_user_data_viewer_page()
 
-
-# ============================================================================
-# FUNÇÃO PÁGINA SOBRE NÓS
-# ============================================================================
-
-def page_about():
-    """Página com informações sobre a equipe de desenvolvimento."""
-    col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
-    
-    with col1:
-        st.markdown("### ℹ️ Sobre Nós")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_about"):
-            st.session_state.current_page = "home"
-            st.rerun()
-    
-    st.divider()
-    
-    st.markdown("## Equipe de Desenvolvimento")
-    st.markdown("Conheça os integrantes do projeto Academia Data Science:")
-    st.divider()
-
-    import base64
-
-    def get_image_base64(image_path):
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode("utf-8")
-
-    result = avatar(
-        [
-            {
-                "url": f"data:image/png;base64,{get_image_base64('src/presentation/assets/alexandre_sass_silva.png')}",
-                "size": 80,
-                "title": "Alexandre Sass Silva",
-                "caption": "Alexandre Sass Silva",
-                "key": "avatar1",
-            },
-            {
-                "url": f"data:image/png;base64,{get_image_base64('src/presentation/assets/gabriel_diniz_silva.png')}",
-                "size": 80,
-                "title": "Gabriel Diniz Silva",
-                "caption": "Gabriel Diniz Silva",
-                "key": "avatar2",
-            },
-            {
-                "url": f"data:image/png;base64,{get_image_base64('src/presentation/assets/luis_queiroz_dias.png')}",
-                "size": 80,
-                "title": "Luís Queiroz Dias",
-                "caption": "Luís Queiroz Dias",
-                "key": "avatar3",
-            },
-            {
-                "url": f"data:image/png;base64,{get_image_base64('src/presentation/assets/suelen_strack.png')}",
-                "size": 80,
-                "title": "Suélen Strack",
-                "caption": "Suélen Strack",
-                "key": "avatar4",
-            },
-        ]
-    )
-    st.write(result)
-
-
 # ============================================================================
 # FUNÇÃO PÁGINA DASHBOARD
 # ============================================================================
 
 def page_dashboard():
-    """Página de exibição da arquitetura Gold (Dashboard)."""
-    col1, col2 = st.columns([4, 1])
+    """Página de redirecionamento para Dashboard Power BI."""
+    st.markdown("### Dashboard - Análise de Dados")
     
-    with col1:
-        st.markdown("### 📊 Arquitetura Gold - Dashboard Estrutural")
-    
-    with col2:
-        if st.button("Voltar", key="btn_back_dashboard"):
-            st.session_state.current_page = "home"
-            st.rerun()
-    
-    st.markdown("Visualização da arquitetura de dados do modelo dimensional (Star Schema).")
+    st.markdown("Você será redirecionado para o dashboard interativo no Power BI.")
     st.divider()
     
-    try:
-        # Ler arquivo gold_architecture.md
-        gold_arch_path = Path(__file__).parent.parent.parent / "docs" / "gold_architecture.md"
-        
-        if gold_arch_path.exists():
-            with open(gold_arch_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            
-            # Exibir conteúdo em abas para melhor organização
-            st.markdown(content)
-        else:
-            st.error(f"❌ Arquivo não encontrado: {gold_arch_path}")
-    except Exception as e:
-        st.error(f"❌ Erro ao carregar o arquivo: {e}")
-        logger.error(f"Erro ao exibir dashboard: {e}")
+    # Botão para abrir o Power BI
+    st.link_button(
+        "Abrir Dashboard Power BI",
+        "https://app.powerbi.com/links/U62QaGqjCt?ctid=cf36141c-ddd7-45a7-b073-111f66d0b30c&pbi_source=linkShare",
+        use_container_width=True,
+    )
 
 
 # ============================================================================
@@ -566,8 +490,8 @@ def main():
     
     if st.session_state.current_page == "public_home":
         page_public_home()
-    elif st.session_state.current_page == "home":
-        page_home()
+    elif st.session_state.current_page == "login":
+        page_login()
     elif st.session_state.current_page == "ingestion":
         page_ingestion()
     elif st.session_state.current_page == "manual_ingestion":
@@ -580,8 +504,7 @@ def main():
         page_user_registration()
     elif st.session_state.current_page == "user_viewer":
         page_user_data_viewer()
-    elif st.session_state.current_page == "about":
-        page_about()
+
 
 
 if __name__ == "__main__":
