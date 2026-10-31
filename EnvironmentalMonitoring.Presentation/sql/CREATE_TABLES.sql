@@ -1,48 +1,11 @@
-/*
-========================================================
-APAGAR TABELAS EXISTENTES
-========================================================
-*/
-USE EnvironmentalMonitoring;
-GO
-
-IF OBJECT_ID('dbo.ReadingValues', 'U') IS NOT NULL
-    DROP TABLE dbo.ReadingValues;
-GO
-
-IF OBJECT_ID('dbo.Readings', 'U') IS NOT NULL
-    DROP TABLE dbo.Readings;
-GO
-
-IF OBJECT_ID('dbo.Parameters', 'U') IS NOT NULL
-    DROP TABLE dbo.Parameters;
-GO
-
-IF OBJECT_ID('dbo.Stations', 'U') IS NOT NULL
-    DROP TABLE dbo.Stations;
-GO
-
-IF OBJECT_ID('dbo.ParameterCategories', 'U') IS NOT NULL
-    DROP TABLE dbo.ParameterCategories;
-GO
-IF OBJECT_ID('dbo.Operators', 'U') IS NOT NULL
-    DROP TABLE dbo.Operators;
-GO
-
-IF OBJECT_ID('dbo.Users', 'U') IS NOT NULL
-    DROP TABLE dbo.Users;
-GO
-
-IF OBJECT_ID('dbo.Services', 'U') IS NOT NULL
-    DROP TABLE dbo.Services;
-GO
 
 /*
 ========================================================
 STATIONS TABLE
 ========================================================
 */
-
+IF (OBJECT_ID('dbo.Stations', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.Stations
 (
     Id  INT IDENTITY(1,1) NOT NULL,
@@ -56,12 +19,15 @@ CREATE TABLE dbo.Stations
     CONSTRAINT PK_Stations PRIMARY KEY (Id),
     CONSTRAINT UQ_Stations_Code UNIQUE (Code)
 );
+END
 GO
 /*
 ========================================================
 USERS TABLE
 ========================================================
 */
+IF (OBJECT_ID('dbo.Users', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.Users
 (
     Id INT IDENTITY(1,1) NOT NULL,
@@ -78,12 +44,15 @@ CREATE TABLE dbo.Users
     CONSTRAINT UQ_Users_Email UNIQUE (Email),
     CONSTRAINT UQ_Users_Cpf UNIQUE (Cpf)
 );
+END
 GO
 /*
 ========================================================
 SERVICES TABLE
 ========================================================
 */
+IF (OBJECT_ID('dbo.Services', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.Services
 (
     Id INT IDENTITY(1,1) NOT NULL,
@@ -95,12 +64,15 @@ CREATE TABLE dbo.Services
     CONSTRAINT UQ_Services_Code
         UNIQUE (Code)
 );
+END
 GO
 /*
 ========================================================
 OPERATORS TABLE
 ========================================================
 */
+IF (OBJECT_ID('dbo.Operators', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.Operators
 (
     Id INT IDENTITY(1,1) NOT NULL,
@@ -134,12 +106,15 @@ CREATE TABLE dbo.Operators
     CONSTRAINT UQ_Operators_Code
         UNIQUE (Code)
 );
+END
 GO
 /*
 ========================================================
 READINGS TABLE
 ========================================================
 */
+IF (OBJECT_ID('dbo.Readings', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.Readings
 (
     Id  BIGINT IDENTITY(1,1) NOT NULL,
@@ -152,6 +127,7 @@ CREATE TABLE dbo.Readings
     CONSTRAINT FK_Readings_Operators FOREIGN KEY (OperatorId) REFERENCES dbo.Operators(Id),
     CONSTRAINT UQ_Readings_Station_DateTime UNIQUE (StationId, DateTime)
 );
+END
 GO
 /*
 ========================================================
@@ -159,6 +135,8 @@ PARAMETER CATEGORIES
 ========================================================
 */
 
+IF (OBJECT_ID('dbo.ParameterCategories', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.ParameterCategories
 (
     Id INT IDENTITY(1,1) NOT NULL,
@@ -171,12 +149,15 @@ CREATE TABLE dbo.ParameterCategories
     CONSTRAINT UQ_ParameterCategories_Code
         UNIQUE (Code)
 );
+END
 GO
 /*
 ========================================================
 PARAMETERS TABLE
 ========================================================
 */
+IF (OBJECT_ID('dbo.Parameters', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.Parameters
 (
     Id INT IDENTITY(1,1) NOT NULL,
@@ -199,6 +180,7 @@ CREATE TABLE dbo.Parameters
         FOREIGN KEY (CategoryId)
         REFERENCES dbo.ParameterCategories(Id)
 );
+END
 GO
 
 /*
@@ -206,6 +188,8 @@ GO
 READING VALUES TABLE
 ========================================================
 */
+IF (OBJECT_ID('dbo.ReadingValues', 'U') IS NULL )
+BEGIN
 CREATE TABLE dbo.ReadingValues
 (
     ReadingId BIGINT NOT NULL,
@@ -216,6 +200,7 @@ CREATE TABLE dbo.ReadingValues
     CONSTRAINT FK_ReadingValues_Readings FOREIGN KEY (ReadingId) REFERENCES dbo.Readings(Id),
     CONSTRAINT FK_ReadingValues_Parameters FOREIGN KEY (ParameterId) REFERENCES dbo.Parameters(Id)
 );
+END
 GO
 
 /*  
@@ -223,11 +208,20 @@ GO
 INDICES
 ========================================================
 */
-CREATE INDEX IX_Readings_Station_DateTime ON dbo.Readings(StationId, DateTime);
+IF (OBJECT_ID('dbo.Readings', 'U') IS NOT NULL )
+BEGIN
+    CREATE INDEX IX_Readings_Station_DateTime ON dbo.Readings(StationId, DateTime);
+END
 GO
 
-CREATE INDEX IX_ReadingValues_Parameter ON dbo.ReadingValues(ParameterId);
+IF (OBJECT_ID('dbo.ReadingValues', 'U') IS NOT NULL )
+BEGIN
+    CREATE INDEX IX_ReadingValues_Parameter ON dbo.ReadingValues(ParameterId);
+END
 GO
 
-CREATE INDEX IX_ReadingValues_Reading ON dbo.ReadingValues(ReadingId);
+IF (OBJECT_ID('dbo.ReadingValues', 'U') IS NOT NULL )
+BEGIN
+    CREATE INDEX IX_ReadingValues_Reading ON dbo.ReadingValues(ReadingId);
+END
 GO
