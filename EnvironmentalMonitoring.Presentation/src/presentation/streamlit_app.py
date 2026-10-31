@@ -13,7 +13,6 @@ project_root = Path(__file__).parent.parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import pandas as pd
 import streamlit as st
 
 from src.presentation.streamlit_support import (
@@ -31,7 +30,6 @@ from src.presentation.public_home_page import show_public_home_page
 from src.presentation.login_page import show_login_page
 from src.config import logger
 from src.security.log_utils import tratar_erro
-from streamlit_avatar import avatar
 
 # ============================================================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -44,13 +42,7 @@ st.set_page_config(
 )
 
 # Ocultar status widget
-st.markdown("""
-    <style>
-        [data-testid="stStatusWidget"] {
-            display: none;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+st.markdown("""<style>[data-testid="stHeader"] {display: none; !important;} [data-testid="stMainBlockContainer"] {padding-top: 0; !important;}</style>""", unsafe_allow_html=True)
 
 # Inicializar session state ANTES de usar
 st.session_state.setdefault("weather_statistics", None)
@@ -102,23 +94,39 @@ def _logout(motivo: str = "manual") -> None:
     st.session_state.current_page = "public_home"
 
 # ============================================================================
+# HEADER
+# ============================================================================
+
+def render_header():
+    """Renderiza o cabeçalho da página pública."""
+    col1, col2 = st.columns([0.85, 0.15])
+    
+    with col1:
+        st.markdown(
+            "<div style='font-size: 24px; font-weight: bold; color: #ff5800; font-family: \"Trebuchet MS\", sans-serif; font-weight: 700;'>monitoramento ambiental</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown("<div></div>", unsafe_allow_html=True)
+    
+    with col2:
+        # Botão que redireciona para a página de login - só aparece se não estiver logado
+        if not st.session_state.get("usuario") and not st.session_state.current_page == "login":
+            if st.button("Login", use_container_width=True, key="login_button"):
+                st.session_state.current_page = "login"
+                st.rerun()
+
+render_header()
+
+# ============================================================================
 # BARRA LATERAL - Apenas para usuários autenticados (pós-login)
 # ============================================================================
 
 if st.session_state.usuario and st.session_state.current_page not in ["login"]:
+    
     with st.sidebar:
         usuario = st.session_state.usuario
 
-def page_1():
-        # Link HTML clicável (texto simples)
-        st.markdown("""
-        <span style="cursor: pointer; text-decoration: none; color: inherit; font-size: 16px;">
-           monitoramento ambiental
-        </span>
-        """, unsafe_allow_html=True)
-        
         st.markdown(f"**{usuario.get('username', 'Usuário')}**  \n{usuario.get('atribution', '')}")
-
        
         # Home
         if st.button("Home", use_container_width=True, key="sidebar_home"):
@@ -163,7 +171,7 @@ def page_1():
             st.rerun()
 
 # Mostrar título apenas nas páginas autenticadas
-if st.session_state.current_page not in ["public_home"]:
+if st.session_state.current_page not in ["public_home"] and st.session_state.current_page not in ["login"]:
     st.title("Monitoramento e Análise de Dados Ambientais")
 
 # ============================================================================

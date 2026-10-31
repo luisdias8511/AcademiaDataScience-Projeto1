@@ -20,26 +20,6 @@ def get_image_base64(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-
-def render_header():
-    """Renderiza o cabeçalho da página pública."""
-    col1, col2 = st.columns([0.85, 0.15])
-    
-    with col1:
-        st.markdown(
-            "<div style='font-size: 24px; font-weight: bold; color: #ff5800;'>monitoramento ambiental</div>",
-            unsafe_allow_html=True
-        )
-        st.markdown("<div></div>", unsafe_allow_html=True)
-    
-    with col2:
-        # Botão que redireciona para a página de login - só aparece se não estiver logado
-        if not st.session_state.get("usuario"):
-            if st.button("Login", use_container_width=True, key="login_button"):
-                st.session_state.current_page = "login"
-                st.rerun()
-
-
 def render_hero():
     """Renderiza a seção hero com imagem de fundo e card."""
     assets_path = Path(__file__).parent / "assets" / "banner_home.jpg"
@@ -120,7 +100,6 @@ def show_public_home_page():
     load_css()
     
     # Renderiza componentes em ordem
-    render_header()
     render_hero()
     render_overview()
     render_solutions()
