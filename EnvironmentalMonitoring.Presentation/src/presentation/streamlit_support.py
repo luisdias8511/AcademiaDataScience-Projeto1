@@ -9,6 +9,8 @@ from datetime import datetime, timezone, date, timedelta
 from pathlib import Path
 from time import perf_counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from uuid import uuid4
+import json
 
 import streamlit as st
 
@@ -20,6 +22,9 @@ from src.reporting import (
     export_statistics_with_outliers_detail,
 )
 from src.security.log_utils import tratar_erro
+from src.processing.bronze_contract_validator import validate_contract
+from src.processing.json_to_parquet import json_to_parquet
+from src.config import logger
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.database.blob_storage_service import BlobStorageService
@@ -28,7 +33,85 @@ from src.ingestion.api_client import APIClient
 from src.constants import SERVICES
 from src.models import Station
 from src.models.reading import Reading
-# Inicializa o serviço de armazenamento de blobs
+
+# ============================================================================
+# CARREGAMENTO DE SCHEMAS BRONZE
+# ============================================================================
+
+def _load_schema(schema_name: str) -> dict:
+    """Carrega um schema JSON do diretório de contratos.
+    
+    Args:
+        schema_name: Nome do arquivo schema (ex: weather-bronze.schema.json)
+    
+    Returns:
+        dict: Schema carregado
+    """
+    schema_path = Path(__file__).parent.parent.parent / "contracts" / "schemas" / schema_name
+    try:
+        with open(schema_path, "r", encoding="utf-8") as schema_file:
+            return json.load(schema_file)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        tratar_erro(
+            e,
+            f"Falha ao carregar schema {schema_name}",
+            encerrar=False,
+        )
+        return {}
+
+WEATHER_SCHEMA = _load_schema("weather-bronze.schema.json")
+WATER_SCHEMA = _load_schema("water-bronze.schema.json")
+
+# ============================================================================
+# LOGGING DE AUDITORIA
+# ============================================================================
+
+def _log_backfill_to_audit(blob_name: str, category: str) -> None:
+    """Registra um evento de substituição (backfill) de documento no arquivo de auditoria.
+    
+    Todos os eventos de backfill são agregados em um único arquivo JSONL
+    (JSON Lines format), onde cada linha representa um evento.
+    
+    Args:
+        blob_name: Nome do blob que foi atualizado/substituído.
+        category: Categoria do documento (weather ou water).
+    """
+    try:
+        audit_service = BlobStorageService(SERVICES["audit"]["blob_container"])
+        
+        event_id = str(uuid4())
+        timestamp = datetime.now(timezone.utc)
+        
+        log_entry = {
+            "event_id": event_id,
+            "timestamp": timestamp.isoformat(),
+            "event_type": "BACKFILL",
+            "action": "DOCUMENT_UPDATED",
+            "category": category,
+            "blob_name": blob_name,
+            "description": f"Documento {category} substituído durante ingestão"
+        }
+        
+        audit_log_name = f"backfill_{category.lower()}.jsonl"
+        audit_service.append_line_to_jsonl(audit_log_name, log_entry)
+        
+        logger.info(
+            f"Log de backfill registrado",
+            extra={
+                "event_id": event_id,
+                "event": "BACKFILL",
+                "category": category,
+                "blob_name": blob_name,
+                "audit_log": audit_log_name
+            }
+        )
+    except Exception as e:
+        tratar_erro(
+            e,
+            f"Falha ao registrar log de backfill para {blob_name}",
+            encerrar=False,
+        )
+
 
 def load_stations():
     """Carrega lista de estações do repositório.
@@ -304,15 +387,19 @@ def parser_readings(
 def persist_readings_bronze(
     documents_weather: list[dict],
     documents_water: list[dict],
-) -> tuple[tuple[int, int], tuple[int, int]]:
+) -> tuple[tuple[int, int, list[dict]], tuple[int, int, list[dict]]]:
     """Persiste leituras no blob storage bronze.
+    
+    Valida cada documento contra seu respectivo contrato antes de persistir.
+    Documentos inválidos não são persistidos. Registra logs de substituição.
     
     Args:
         documents_weather: Leituras meteorológicas.
         documents_water: Leituras de qualidade da água.
     
     Returns:
-        tuple: ((weather_inserted, weather_updated), (water_inserted, water_updated)).
+        tuple: ((weather_inserted, weather_updated, weather_persisted_docs), 
+                (water_inserted, water_updated, water_persisted_docs)).
     """
     blob_service_weather = BlobStorageService(SERVICES["weather"]["blob_container"])
     blob_service_water = BlobStorageService(SERVICES["water"]["blob_container"])
@@ -320,24 +407,117 @@ def persist_readings_bronze(
     weather_updated = 0
     water_inserted = 0
     water_updated = 0
+    weather_persisted_docs = []
+    water_persisted_docs = []
 
     for document in documents_weather:        
+        is_valid, error = validate_contract(document["document"], WEATHER_SCHEMA)
+        
+        if not is_valid:
+            # TODO: Gerar log de contrato inválido com detalhes do erro
+            continue
+        
         # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
         if blob_service_weather.blob_exists(document['blob_name']): 
-            weather_updated += 1 #TODO: Gerar log de backfill
+            weather_updated += 1
+            _log_backfill_to_audit(document['blob_name'], SERVICES["weather"]["category_code"])
         else:
             weather_inserted += 1
         blob_service_weather.upload_json(document['blob_name'], document["document"])
+        weather_persisted_docs.append(document)
 
     for document in documents_water:        
+        is_valid, error = validate_contract(document["document"], WATER_SCHEMA)
+        
+        if not is_valid:
+            # TODO: Gerar log de contrato inválido com detalhes do erro
+            continue
+        
         # Verifica se o blob já existe e armazena o documento bronze no serviço de armazenamento de blobs
         if blob_service_water.blob_exists(document['blob_name']): 
-            water_updated += 1 #TODO: Gerar log de backfill
+            water_updated += 1
+            _log_backfill_to_audit(document['blob_name'], SERVICES["water"]["category_code"])
         else:
             water_inserted += 1
         blob_service_water.upload_json(document['blob_name'], document["document"])
+        water_persisted_docs.append(document)
     
-    return (weather_inserted, weather_updated), (water_inserted, water_updated)
+    return (weather_inserted, weather_updated, weather_persisted_docs), (water_inserted, water_updated, water_persisted_docs)
+
+
+def persist_readings_silver(
+    parquet_docs_weather: list[dict],
+    parquet_docs_water: list[dict],
+) -> tuple[tuple[int, int, list[dict]], tuple[int, int, list[dict]]]:
+    """Persiste leituras em Parquet no blob storage silver.
+    
+    Recebe documentos já convertidos para Parquet e os armazena no container
+    silver seguindo o mesmo modelo de nomenclatura dos blobs do bronze.
+    
+    Args:
+        parquet_docs_weather: Lista de documentos Parquet de meteorologia.
+                             Cada documento contém: {"blob_name": str, "parquet_bytes": bytes}
+        parquet_docs_water: Lista de documentos Parquet de qualidade da água.
+                           Cada documento contém: {"blob_name": str, "parquet_bytes": bytes}
+    
+    Returns:
+        tuple: ((weather_inserted, weather_updated, weather_persisted_docs), 
+                (water_inserted, water_updated, water_persisted_docs)).
+    """
+    blob_service_weather = BlobStorageService(SERVICES["weather"]["blob_container"] + "-silver")
+    blob_service_water = BlobStorageService(SERVICES["water"]["blob_container"] + "-silver")
+    weather_inserted = 0
+    weather_updated = 0
+    water_inserted = 0
+    water_updated = 0
+    weather_persisted_docs = []
+    water_persisted_docs = []
+
+    for parquet_doc in parquet_docs_weather:        
+        blob_name = parquet_doc["blob_name"].replace(".json", ".parquet")
+        
+        try:
+            # Verifica se o blob já existe
+            if blob_service_weather.blob_exists(blob_name): 
+                weather_updated += 1
+            else:
+                weather_inserted += 1
+            
+            # Armazena o arquivo Parquet no blob storage silver
+            blob_client = blob_service_weather._container_client.get_blob_client(blob_name)
+            blob_client.upload_blob(parquet_doc["parquet_bytes"], overwrite=True)
+            weather_persisted_docs.append(parquet_doc)
+        except Exception as e:
+            # TODO: Gerar log de falha na persistência de meteorologia
+            tratar_erro(
+                e,
+                f"Falha ao persistir documento Parquet de meteorologia: {blob_name}",
+                encerrar=False,
+            )
+
+    for parquet_doc in parquet_docs_water:        
+        blob_name = parquet_doc["blob_name"].replace(".json", ".parquet")
+        
+        try:
+            # Verifica se o blob já existe
+            if blob_service_water.blob_exists(blob_name): 
+                water_updated += 1
+            else:
+                water_inserted += 1
+            
+            # Armazena o arquivo Parquet no blob storage silver
+            blob_client = blob_service_water._container_client.get_blob_client(blob_name)
+            blob_client.upload_blob(parquet_doc["parquet_bytes"], overwrite=True)
+            water_persisted_docs.append(parquet_doc)
+        except Exception as e:
+            # TODO: Gerar log de falha na persistência de água
+            tratar_erro(
+                e,
+                f"Falha ao persistir documento Parquet de qualidade da água: {blob_name}",
+                encerrar=False,
+            )
+    
+    return (weather_inserted, weather_updated, weather_persisted_docs), (water_inserted, water_updated, water_persisted_docs)
 
 
 def persist_readings(
@@ -513,7 +693,7 @@ def run_ingestion_pipeline(
 
         # Etapa 5.2: Persistência bronze (armazenamento em blob)
         progress_bar.progress(59, text="Persistindo dados bronze.")
-        (weather_inserted, weather_updated), (water_inserted, water_updated) = persist_readings_bronze(
+        (weather_inserted, weather_updated, weather_persisted_docs), (water_inserted, water_updated, water_persisted_docs) = persist_readings_bronze(
             documents_weather,
             documents_water,
         )
@@ -521,15 +701,61 @@ def run_ingestion_pipeline(
         st.write(f"Meteorologia: {weather_inserted} documento(s) inserido(s) e {weather_updated} atualizado(s) no bronze.")
         st.write(f"Qualidade da água: {water_inserted} documento(s) inserido(s) e {water_updated} atualizado(s) no bronze.")
 
-        # Etapa 5.3: Persistência silver
-        progress_bar.progress(60, text="Persistindo dados meteorológicos no silver.")
-        progress_bar.progress(70, text="Persistindo dados de qualidade da água no silver.")
+        # Etapa 5.2.1: Conversão para Parquet
+        progress_bar.progress(62, text="Convertendo documentos bronze para Parquet.")
+        weather_parquet_docs = []
+        for doc in weather_persisted_docs:
+            try:
+                parquet_bytes = json_to_parquet(doc["document"])
+                weather_parquet_docs.append({
+                    "blob_name": doc["blob_name"],
+                    "parquet_bytes": parquet_bytes
+                })
+            except Exception as e:
+                tratar_erro(
+                    e,
+                    f"Falha ao converter documento de meteorologia para Parquet: {doc['blob_name']}",
+                    encerrar=False,
+                )
+        
+        water_parquet_docs = []
+        for doc in water_persisted_docs:
+            try:
+                parquet_bytes = json_to_parquet(doc["document"])
+                water_parquet_docs.append({
+                    "blob_name": doc["blob_name"],
+                    "parquet_bytes": parquet_bytes
+                })
+            except Exception as e:
+                tratar_erro(
+                    e,
+                    f"Falha ao converter documento de água para Parquet: {doc['blob_name']}",
+                    encerrar=False,
+                )
+        
+        progress_bar.progress(64, text="Conversão para Parquet concluída.")
+        st.write(f"Meteorologia: {len(weather_parquet_docs)} documento(s) convertido(s) para Parquet.")
+        st.write(f"Qualidade da água: {len(water_parquet_docs)} documento(s) convertido(s) para Parquet.")
+
+        # Etapa 5.2.2: Persistência silver (armazenamento em Parquet)
+        progress_bar.progress(66, text="Persistindo dados Parquet no silver.")
+        (weather_inserted_silver, weather_updated_silver, weather_silver_persisted_docs), (water_inserted_silver, water_updated_silver, water_silver_persisted_docs) = persist_readings_silver(
+            weather_parquet_docs,
+            water_parquet_docs,
+        )
+        progress_bar.progress(70, text="Persistência silver (Parquet) concluída.")
+        st.write(f"Meteorologia: {weather_inserted_silver} arquivo(s) Parquet inserido(s) e {weather_updated_silver} atualizado(s) no silver.")
+        st.write(f"Qualidade da água: {water_inserted_silver} arquivo(s) Parquet inserido(s) e {water_updated_silver} atualizado(s) no silver.")
+
+        # Etapa 5.3: Persistência silver (banco de dados)
+        progress_bar.progress(72, text="Persistindo leituras no banco de dados (silver).")
         
         (weather_inserted, weather_updated), (water_inserted, water_updated) = persist_readings(
             repository,
             readings_weather,
             readings_water,
         )
+        progress_bar.progress(85, text="Persistência em banco de dados concluída.")
         st.write(f"Meteorologia: {weather_inserted} leitura(s) inserida(s) e {weather_updated} atualizada(s).")
         st.write(f"Qualidade da água: {water_inserted} leitura(s) inserida(s) e {water_updated} atualizada(s).")        
         
