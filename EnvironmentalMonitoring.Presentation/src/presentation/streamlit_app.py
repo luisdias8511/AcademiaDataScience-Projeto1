@@ -28,6 +28,7 @@ from src.presentation.user_data_viewer_app import show_user_data_viewer_page
 from src.presentation.manual_ingestion_app import show_manual_ingestion_page
 from src.presentation.public_home_page import show_public_home_page
 from src.presentation.login_page import show_login_page
+from src.presentation.gold_update_page import show_gold_update_page
 from src.config import logger
 from src.security.log_utils import tratar_erro
 
@@ -144,7 +145,11 @@ if st.session_state.usuario and st.session_state.current_page not in ["login"]:
         if st.button("Ingestão Manual", use_container_width=True, key="sidebar_manual_ingestion"):
             st.session_state.current_page = "manual_ingestion"
             st.rerun()
-        
+
+        if st.button("Atualização da Camada Gold", use_container_width=True, key="sidebar_gold_update"):
+            st.session_state.current_page = "gold_update"
+            st.rerun()     
+               
         if st.button("Analytics e Relatórios", use_container_width=True, key="sidebar_analytics"):
             st.session_state.current_page = "analytics"
             st.rerun()
@@ -152,7 +157,7 @@ if st.session_state.usuario and st.session_state.current_page not in ["login"]:
         if st.button("Dashboard", use_container_width=True, key="sidebar_dashboard"):
             st.session_state.current_page = "dashboard"
             st.rerun()
-        
+             
         st.markdown("---")
         st.markdown("**Gestão de Usuários**")
         
@@ -490,6 +495,15 @@ def page_dashboard():
 
 
 # ============================================================================
+# FUNÇÃO PÁGINA ATUALIZAÇÃO DA CAMADA GOLD
+# ============================================================================
+
+def page_gold_update():
+    """Página de atualização da camada Gold."""
+    show_gold_update_page()
+
+
+# ============================================================================
 # FUNÇÃO PRINCIPAL
 # ============================================================================
 
@@ -508,6 +522,8 @@ def main():
         page_analytics()
     elif st.session_state.current_page == "dashboard":
         page_dashboard()
+    elif st.session_state.current_page == "gold_update":
+        page_gold_update()
     elif st.session_state.current_page == "user_registration":
         page_user_registration()
     elif st.session_state.current_page == "user_viewer":
